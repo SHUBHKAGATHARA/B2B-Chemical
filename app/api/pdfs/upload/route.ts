@@ -3,6 +3,10 @@ import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth/session';
 import { saveUploadedFile, getFileFromRequest } from '@/lib/upload';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 // POST - Upload PDF and assign to distributors
 export async function POST(request: NextRequest) {
     try {

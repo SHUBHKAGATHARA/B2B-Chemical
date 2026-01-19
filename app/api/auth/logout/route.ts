@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 export async function POST(_request: NextRequest) {
     try {
         // Build Set-Cookie header to clear the cookie

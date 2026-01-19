@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth/session';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 // GET - List system logs (Admin only)
 export async function GET(request: NextRequest) {
     try {

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/session';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 export async function GET(request: NextRequest) {
     try {
         const session = await requireAuth();

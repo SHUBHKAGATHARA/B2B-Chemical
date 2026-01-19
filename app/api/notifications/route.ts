@@ -17,6 +17,10 @@ import {
     parseDateRangeParams,
 } from '@/lib/utils/pagination';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 // GET - List notifications for current distributor with pagination and filtering
 export async function GET(request: NextRequest) {
     try {

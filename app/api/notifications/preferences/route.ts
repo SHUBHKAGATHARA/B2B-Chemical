@@ -11,6 +11,10 @@ import {
     handleApiError,
 } from '@/lib/utils/api-response';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 // GET - Get notification preferences for current user
 export async function GET(request: NextRequest) {
     try {

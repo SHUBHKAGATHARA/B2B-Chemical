@@ -8,6 +8,10 @@ import {
     handleApiError,
 } from '@/lib/utils/api-response';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 // POST - Register device token for push notifications
 export async function POST(request: NextRequest) {
     try {

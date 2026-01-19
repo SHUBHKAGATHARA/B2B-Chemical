@@ -20,6 +20,10 @@ import {
     parseFilterParams,
 } from '@/lib/utils/pagination';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 // GET - List all distributors with pagination, filtering, and search (Admin only)
 export async function GET(request: NextRequest) {
     try {

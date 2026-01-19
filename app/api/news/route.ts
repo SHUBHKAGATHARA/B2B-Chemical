@@ -4,6 +4,10 @@ import { prisma } from '@/lib/db';
 import { verifyToken } from '@/lib/auth/jwt';
 import { z } from 'zod';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 // Schema for validation
 const newsSchema = z.object({
     title: z.string().min(1, "Title is required"),

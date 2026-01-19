@@ -19,6 +19,10 @@ import {
     parseDateRangeParams,
 } from '@/lib/utils/pagination';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
+
 // GET - List PDFs with pagination, filtering, and search (Admin and Distributors)
 export async function GET(request: NextRequest) {
     try {

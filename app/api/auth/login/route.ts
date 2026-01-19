@@ -6,6 +6,9 @@ import {
     LoginException,
 } from '@/lib/auth/login-service';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
