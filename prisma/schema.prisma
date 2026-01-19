@@ -1,0 +1,172 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DISTRIBUTOR
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum AssignType {
+  SINGLE
+  MULTIPLE
+  ALL
+}
+
+enum PdfStatus {
+  PENDING
+  DONE
+}
+
+model User {
+  id                      String    @id @default(cuid())
+  fullName                String
+  email                   String    @unique
+  passwordHash            String
+  role                    Role      @default(DISTRIBUTOR)
+  status                  Status    @default(ACTIVE)
+  notificationPreferences Json?     // {inApp, push, email, categories}
+  createdAt               DateTime  @default(now())
+  lastLogin               DateTime?
+
+  pdfUploads   PdfUpload[]
+  logs         Log[]
+  deviceTokens DeviceToken[]
+  authoredNews News[]
+
+  @@index([email])
+  @@index([status])
+  @@index([role])
+  @@index([createdAt])
+  @@index([lastLogin])
+  @@map("users")
+}
+
+model Distributor {
+  id          String   @id @default(cuid())
+  companyName String
+  email       String   @unique
+  status      Status   @default(ACTIVE)
+  createdAt   DateTime @default(now())
+
+  pdfAssignments PdfUpload[]
+  notifications  Notification[]
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("distributors")
+}
+
+model PdfUpload {
+  id                    String    @id @default(cuid())
+  fileName              String
+  fileUrl               String
+  uploadedByAdminId     String
+  assignedDistributorId String?
+  assignedGroup         AssignType @default(SINGLE)
+  status                PdfStatus  @default(PENDING)
+  createdAt             DateTime   @default(now())
+
+  uploadedBy    User          @relation(fields: [uploadedByAdminId], references: [id], onDelete: Cascade)
+  distributor   Distributor?  @relation(fields: [assignedDistributorId], references: [id], onDelete: SetNull)
+  notifications Notification[]
+
+  @@index([uploadedByAdminId])
+  @@index([assignedDistributorId])
+  @@index([status])
+  @@index([assignedGroup])
+  @@index([createdAt])
+  @@index([assignedDistributorId, assignedGroup])
+  @@map("pdf_uploads")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  pdfId     String
+  distId    String
+  readFlag  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  pdf         PdfUpload   @relation(fields: [pdfId], references: [id], onDelete: Cascade)
+  distributor Distributor @relation(fields: [distId], references: [id], onDelete: Cascade)
+
+  @@index([pdfId])
+  @@index([distId])
+  @@index([readFlag])
+  @@index([createdAt])
+  @@index([distId, readFlag])
+  @@index([distId, createdAt])
+  @@map("notifications")
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  action    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@map("logs")
+}
+
+model News {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  category    String   @default("General")
+  imageUrl    String?
+  source      String?
+  publishDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  authorId    String?
+  author      User?    @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
+  @@index([category])
+  @@index([publishDate])
+  @@index([createdAt])
+  @@map("news")
+}
+
+enum Platform {
+  IOS
+  ANDROID
+  WEB
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  Platform
+  isActive  Boolean  @default(true)
+  deviceInfo Json?   // {model, osVersion, appVersion}
+  createdAt DateTime @default(now())
+  lastUsed  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("device_tokens")
+}
