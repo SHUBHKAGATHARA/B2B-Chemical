@@ -10,11 +10,11 @@ export const runtime = 'nodejs';
 // GET - Get single distributor
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         await requireAdmin();
-        const { id } = await params;
+        const { id } = params;
 
         const distributor = await prisma.distributor.findUnique({
             where: { id },
@@ -44,11 +44,11 @@ export async function GET(
 // PUT - Update distributor
 export async function PUT(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         const session = await requireAdmin();
-        const { id } = await params;
+        const { id } = params;
         const body = await request.json();
 
         // Validate input
@@ -105,11 +105,11 @@ export async function PUT(
 // DELETE - Delete distributor
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         const session = await requireAdmin();
-        const { id } = await params;
+        const { id } = params;
 
         const distributor = await prisma.distributor.findUnique({
             where: { id },

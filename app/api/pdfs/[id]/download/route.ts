@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 // GET - Download PDF (with access control)
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         const session = await getSession();
@@ -19,7 +19,7 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id } = await params;
+        const { id } = params;
 
         // Get PDF details
         const pdf = await prisma.pdfUpload.findUnique({

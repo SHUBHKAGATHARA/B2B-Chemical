@@ -5,11 +5,11 @@ import { requireDistributor } from '@/lib/auth/session';
 // PATCH - Mark notification as read
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         const session = await requireDistributor();
-        const { id } = await params;
+        const { id } = params;
 
         // Get distributor ID
         const distributor = await prisma.distributor.findUnique({

@@ -11,11 +11,11 @@ export const runtime = 'nodejs';
 // GET - Get single user
 export async function GET(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         await requireAdmin();
-        const { id } = await params;
+        const { id } = params;
 
         const user = await prisma.user.findUnique({
             where: { id },
@@ -46,11 +46,11 @@ export async function GET(
 // PUT - Update user
 export async function PUT(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         const session = await requireAdmin();
-        const { id } = await params;
+        const { id } = params;
         const body = await request.json();
 
         // Validate input
@@ -107,11 +107,11 @@ export async function PUT(
 // DELETE - Delete user
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-        const session = await requireAdmin();
-        const { id } = await params;
+        await requireAdmin();
+        const { id } = params;
 
         // Prevent self-deletion
         if (id === session.userId) {

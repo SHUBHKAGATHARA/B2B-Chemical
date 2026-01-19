@@ -5,11 +5,11 @@ import { requireAdmin } from '@/lib/auth/session';
 // PATCH - Toggle user status (ACTIVE <-> INACTIVE)
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
         const session = await requireAdmin();
-        const { id } = await params;
+        const { id } = params;
 
         const user = await prisma.user.findUnique({
             where: { id },
