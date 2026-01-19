@@ -24,7 +24,7 @@ const nextConfig = {
         serverActions: {
             bodySizeLimit: '10mb',
         },
-        optimizeCss: true, // Enable CSS optimization
+        optimizeCss: false, // Disable CSS optimization (critters module issue)
     },
 
     // Aggressive caching for static assets
