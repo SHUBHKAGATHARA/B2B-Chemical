@@ -1264,6 +1264,11 @@ vercel
 # Set environment variables in Vercel dashboard
 ```
 
+**Important**: All API routes are configured to use Node.js runtime (not Edge Runtime) due to bcryptjs compatibility. This is already configured in the codebase with:
+```typescript
+export const runtime = 'nodejs';
+```
+
 ### Docker
 ```dockerfile
 FROM node:18-alpine
@@ -1276,6 +1281,19 @@ RUN npm run build
 EXPOSE 3000
 CMD ["npm", "start"]
 ```
+
+### Build Issues
+
+If you encounter Edge Runtime errors during deployment:
+```
+Error: A Node.js API is used (setImmediate) which is not supported in the Edge Runtime
+```
+
+**Solution**: The codebase already includes `export const runtime = 'nodejs'` in all API routes and middleware. If you still see this error:
+
+1. Verify all API route files have the runtime export
+2. Clear build cache: `rm -rf .next`
+3. Rebuild: `npm run build`
 
 ---
 
