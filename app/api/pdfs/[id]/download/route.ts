@@ -4,6 +4,10 @@ import { getSession } from '@/lib/auth/session';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
+// Force dynamic rendering and Node.js runtime
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // GET - Download PDF (with access control)
 export async function GET(
     request: NextRequest,

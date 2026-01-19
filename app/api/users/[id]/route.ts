@@ -4,6 +4,10 @@ import { requireAdmin } from '@/lib/auth/session';
 import { updateUserSchema } from '@/lib/validations/schemas';
 import { hashPassword } from '@/lib/auth/jwt';
 
+// Force dynamic rendering and Node.js runtime
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // GET - Get single user
 export async function GET(
     request: NextRequest,
