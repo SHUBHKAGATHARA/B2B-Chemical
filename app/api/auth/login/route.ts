@@ -12,6 +12,8 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
+        console.log('[Login] Attempting login for:', body.email);
+        
         const result = await authenticateLogin(body);
 
         const cookie = buildAuthCookie(result.token);
@@ -53,6 +55,7 @@ export async function POST(request: NextRequest) {
         return response;
     } catch (error: any) {
         if (error instanceof LoginException) {
+            console.log('[Login] Authentication failed:', error.code, error.message);
             return NextResponse.json(
                 {
                     success: false,
@@ -66,13 +69,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.error('Login error:', error);
+        console.error('[Login] Unexpected error:', error);
         return NextResponse.json(
             {
                 success: false,
                 error: {
                     code: 'INTERNAL_ERROR',
                     message: 'An error occurred during login',
+                    details: process.env.NODE_ENV === 'development' ? error.message : undefined,
                 },
             },
             { status: 500 }

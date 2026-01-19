@@ -35,7 +35,8 @@ export default function LoginPage() {
             window.location.replace('/dashboard');
         } catch (err: any) {
             console.error('Login failed:', err);
-            setError(err?.message || 'Login failed. Please try again.');
+            const errorMessage = err?.message || err?.error?.message || 'An error occurred during login. Please try again.';
+            setError(errorMessage);
             setLoading(false);
         }
     };
