@@ -2,9 +2,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from './lib/auth/jwt';
 
-// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
-export const runtime = 'nodejs';
-
 // strictly public routes
 const PUBLIC_ROUTES = ['/login', '/api/auth/login'];
 
