@@ -1,5 +1,8 @@
 'use client';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search, Building, Mail, Key, X } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';

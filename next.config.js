@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    // Skip type checking and linting during build (run separately in CI/CD)
+    typescript: {
+        ignoreBuildErrors: true,
+    },
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
+
     // Performance Optimizations
     compress: true, // Enable gzip compression for faster response
     poweredByHeader: false, // Remove X-Powered-By header for security

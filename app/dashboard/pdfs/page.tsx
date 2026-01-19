@@ -1,5 +1,8 @@
 'use client';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Upload, Download, FileText, Calendar, Filter, X, CheckCircle, Clock } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';

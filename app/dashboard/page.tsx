@@ -3,8 +3,8 @@ import { prisma } from '@/lib/db';
 import { Users, Building2, FileText, Activity, TrendingUp, Download } from 'lucide-react';
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
 
-// Enable static page generation with revalidation for better performance
-export const revalidate = 60; // Revalidate every 60 seconds
+// Force dynamic rendering (requires database connection)
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
     const session = await getSession();
