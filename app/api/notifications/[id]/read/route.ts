@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireDistributor } from '@/lib/auth/session';
 
+// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+export const runtime = 'nodejs';
+
 // PATCH - Mark notification as read
 export async function PATCH(
     request: NextRequest,
