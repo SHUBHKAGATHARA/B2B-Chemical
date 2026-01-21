@@ -45,14 +45,6 @@ export async function authenticateLogin(params: { email: string; password: strin
         email: params.email?.trim() || '',
         password: params.password?.trim() || '',
     };
-    
-    // Check database connection
-    try {
-        await prisma.$connect();
-    } catch (error: any) {
-        console.error('[Login] Database connection failed:', error.message);
-        throw new Error(`Database connection failed: ${error.message}`);
-    }
 
     const parsed = loginSchema.safeParse(trimmedParams);
     if (!parsed.success) {

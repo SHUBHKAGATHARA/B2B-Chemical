@@ -12,13 +12,6 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
     try {
-        console.log('[Login] Environment check:', {
-            hasJWT: !!process.env.JWT_SECRET,
-            hasDB: !!process.env.DATABASE_URL,
-            nodeEnv: process.env.NODE_ENV,
-            isVercel: process.env.VERCEL,
-        });
-        
         const body = await request.json();
         console.log('[Login] Attempting login for:', body.email);
         
