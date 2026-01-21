@@ -1,5 +1,14 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install"
+  "buildCommand": "prisma generate && prisma migrate deploy && npm run build",
+  "installCommand": "npm install",
+  "env": {
+    "SKIP_ENV_VALIDATION": "true"
+  },
+  "functions": {
+    "app/api/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 }

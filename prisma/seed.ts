@@ -14,11 +14,11 @@ async function main() {
     await prisma.user.deleteMany();
 
     // Create Super Admin
-    const adminPassword = await bcrypt.hash('Shubham07@', 10);
+    const adminPassword = await bcrypt.hash('Admin@123', 10);
     const admin = await prisma.user.create({
         data: {
-            fullName: 'Shubham Kagathara',
-            email: 'kagatharashubham9@gmail.com',
+            fullName: 'System Admin',
+            email: 'admin@system.com',
             passwordHash: adminPassword,
             role: 'ADMIN',
             status: 'ACTIVE',

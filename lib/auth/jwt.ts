@@ -5,6 +5,11 @@ import { jwtVerify } from 'jose';
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production';
 const JWT_EXPIRES_IN = '7d'; // 7 days
 
+// Warn if using fallback secret in production
+if ((process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') && !process.env.JWT_SECRET) {
+    console.error('WARNING: JWT_SECRET environment variable is not set in production!');
+}
+
 export interface JWTPayload {
     userId: string;
     email: string;

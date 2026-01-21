@@ -11,6 +11,13 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
     try {
+        console.log('[Login] Environment check:', {
+            hasJWT: !!process.env.JWT_SECRET,
+            hasDB: !!process.env.DATABASE_URL,
+            nodeEnv: process.env.NODE_ENV,
+            isVercel: process.env.VERCEL,
+        });
+        
         const body = await request.json();
         console.log('[Login] Attempting login for:', body.email);
         
@@ -22,15 +29,16 @@ export async function POST(request: NextRequest) {
         // Build Set-Cookie header manually
         // We REMOVE Max-Age and Expires to make this a Session Cookie
         // The browser will delete it when the session ends (browser closed)
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
         const cookieHeader = [
             `${cookie.name}=${cookie.value}`,
             `Path=/`,
             `SameSite=Lax`,
             cookie.options.httpOnly ? 'HttpOnly' : '',
-            cookie.options.secure ? 'Secure' : '',
+            isProduction ? 'Secure' : '',
         ].filter(Boolean).join('; ');
 
-        console.log('[Login] Setting session cookie (no stats/persist)');
+        console.log('[Login] Setting session cookie (no stats/persist)', { isProduction });
 
         const response = NextResponse.json(
             {
@@ -70,13 +78,23 @@ export async function POST(request: NextRequest) {
         }
 
         console.error('[Login] Unexpected error:', error);
+        
+        // Check for common production issues
+        if (error.message?.includes('JWT') && !process.env.JWT_SECRET) {
+            console.error('[Login] JWT_SECRET is not configured!');
+        }
+        if (error.message?.includes('database') || error.code === 'P1001') {
+            console.error('[Login] Database connection issue!');
+        }
+        
+        const isDev = process.env.NODE_ENV === 'development';
         return NextResponse.json(
             {
                 success: false,
                 error: {
                     code: 'INTERNAL_ERROR',
-                    message: 'An error occurred during login',
-                    details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+                    message: isDev ? error.message : 'An error occurred during login. Please check server logs.',
+                    details: isDev ? error.stack : undefined,
                 },
             },
             { status: 500 }

@@ -45,6 +45,14 @@ export async function authenticateLogin(params: { email: string; password: strin
         email: params.email?.trim() || '',
         password: params.password?.trim() || '',
     };
+    
+    // Check database connection
+    try {
+        await prisma.$connect();
+    } catch (error: any) {
+        console.error('[Login] Database connection failed:', error.message);
+        throw new Error(`Database connection failed: ${error.message}`);
+    }
 
     const parsed = loginSchema.safeParse(trimmedParams);
     if (!parsed.success) {
@@ -98,12 +106,13 @@ export async function authenticateLogin(params: { email: string; password: strin
 
 export function buildAuthCookie(token: string) {
     const expiresDate = new Date(Date.now() + AUTH_COOKIE_MAX_AGE_SECONDS * 1000);
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
     return {
         name: AUTH_COOKIE_NAME,
         value: token,
         options: {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: isProduction,
             sameSite: 'lax' as const,
             path: '/',
             // No maxAge or expires -> Session Cookie
