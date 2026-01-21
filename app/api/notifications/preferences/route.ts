@@ -11,7 +11,8 @@ import {
     handleApiError,
 } from '@/lib/utils/api-response';
 
-// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+// Force dynamic rendering and Node.js runtime
+export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 

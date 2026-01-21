@@ -6,7 +6,8 @@ import {
     LoginException,
 } from '@/lib/auth/login-service';
 
-// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+// Force dynamic rendering and Node.js runtime
+export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {

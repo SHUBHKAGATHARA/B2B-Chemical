@@ -4,7 +4,8 @@ import { prisma } from '@/lib/db';
 import { verifyToken } from '@/lib/auth/jwt';
 import { z } from 'zod';
 
-// Force Node.js runtime (bcryptjs not compatible with Edge Runtime)
+// Force dynamic rendering and Node.js runtime
+export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 
