@@ -71,24 +71,32 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        console.error('[Login] Unexpected error:', error);
+        console.error('[Login] Unexpected error:', error.message || error);
+        console.error('[Login] Error stack:', error.stack);
         
-        // Check for common production issues
-        if (error.message?.includes('JWT') && !process.env.JWT_SECRET) {
-            console.error('[Login] JWT_SECRET is not configured!');
-        }
-        if (error.message?.includes('database') || error.code === 'P1001') {
-            console.error('[Login] Database connection issue!');
+        // Identify specific error types for better debugging
+        let errorMessage = 'An error occurred during login.';
+        let errorCode = 'INTERNAL_ERROR';
+        
+        if (error.code === 'P1001' || error.message?.includes('connect')) {
+            errorMessage = 'Database connection failed. Please try again.';
+            errorCode = 'DB_CONNECTION_ERROR';
+            console.error('[Login] DATABASE_URL configured:', !!process.env.DATABASE_URL);
+        } else if (error.code === 'P2021' || error.message?.includes('table')) {
+            errorMessage = 'Database not properly set up.';
+            errorCode = 'DB_SCHEMA_ERROR';
+        } else if (error.message?.includes('JWT') || error.message?.includes('secret')) {
+            errorMessage = 'Authentication configuration error.';
+            errorCode = 'AUTH_CONFIG_ERROR';
+            console.error('[Login] JWT_SECRET configured:', !!process.env.JWT_SECRET);
         }
         
-        const isDev = process.env.NODE_ENV === 'development';
         return NextResponse.json(
             {
                 success: false,
                 error: {
-                    code: 'INTERNAL_ERROR',
-                    message: isDev ? error.message : 'An error occurred during login. Please check server logs.',
-                    details: isDev ? error.stack : undefined,
+                    code: errorCode,
+                    message: errorMessage,
                 },
             },
             { status: 500 }
