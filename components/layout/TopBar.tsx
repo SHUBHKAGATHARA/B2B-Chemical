@@ -29,8 +29,8 @@ export default function TopBar({ user }: TopBarProps) {
     const loadNotifications = async () => {
         try {
             const data = await apiClient.getNotifications();
-            setNotifications(data.notifications || []);
-            setUnreadCount(data.unreadCount || 0);
+            setNotifications(data.data || []);
+            setUnreadCount(data.pagination?.unreadCount || 0);
         } catch (error) {
             console.error('Failed to load notifications');
         }
@@ -72,7 +72,7 @@ export default function TopBar({ user }: TopBarProps) {
             <div className="flex items-center gap-3 animate-slideUp">
                 {/* Search Bar */}
                 <div className="relative hidden md:block">
-                    <input 
+                    <input
                         type="text"
                         placeholder="Quick search..."
                         className="w-64 pl-10 pr-4 py-2 text-sm border border-green-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white/80 backdrop-blur-sm transition-all placeholder:text-gray-400"

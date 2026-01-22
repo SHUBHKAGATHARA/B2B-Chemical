@@ -79,7 +79,7 @@ async function checkDatabase() {
         console.log('\n' + '='.repeat(60));
         console.log('✅ DATABASE CHECK COMPLETE\n');
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('\n❌ ERROR:', error.message);
         console.error('\nFull error:', error);
     } finally {

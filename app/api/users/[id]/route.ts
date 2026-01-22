@@ -110,7 +110,7 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        await requireAdmin();
+        const session = await requireAdmin();
         const { id } = params;
 
         // Prevent self-deletion

@@ -14,6 +14,7 @@ export interface PaginationMeta {
     totalPages: number;
     hasNext: boolean;
     hasPrev: boolean;
+    unreadCount?: number;
 }
 
 export interface ApiResponse<T> {

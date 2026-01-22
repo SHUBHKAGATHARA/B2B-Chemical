@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth/session';
 import { saveUploadedFile, getFileFromRequest } from '@/lib/upload';
+import { AssignType } from '@prisma/client';
 
 // Force dynamic rendering and Node.js runtime
 export const dynamic = 'force-dynamic';
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
         // Get form data
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
-        const assignedGroup = formData.get('assignedGroup') as string;
+        const assignedGroup = formData.get('assignedGroup') as AssignType;
         const distributorIdsStr = formData.get('distributorIds') as string;
 
         // Validate file
