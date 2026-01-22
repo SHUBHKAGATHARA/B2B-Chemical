@@ -280,7 +280,7 @@ export async function getNotificationPreferences(
         return DEFAULT_NOTIFICATION_PREFERENCES;
     }
 
-    return user.notificationPreferences as NotificationPreferences;
+    return user.notificationPreferences as unknown as NotificationPreferences;
 }
 
 /**
@@ -288,7 +288,9 @@ export async function getNotificationPreferences(
  */
 export async function updateNotificationPreferences(
     userId: string,
-    preferences: Partial<NotificationPreferences>
+    preferences: Partial<Omit<NotificationPreferences, 'categories'>> & {
+        categories?: Partial<NotificationPreferences['categories']>;
+    }
 ): Promise<NotificationPreferences> {
     const current = await getNotificationPreferences(userId);
     const updated = {
