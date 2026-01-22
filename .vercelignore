@@ -1,0 +1,39 @@
+# Build output
+.next
+out
+
+# Dependencies
+node_modules
+
+# Environment files
+.env*
+!.env.production.example
+
+# Testing
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Documentation
+*.md
+!README.md
+
+# Development files
+.vscode
+.idea
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Scripts
+scripts/
+test-*.js
+generate-secrets.js
+
+# Prisma migrations (run separately)
+prisma/migrations/
+
+# Upload directory
+uploads/

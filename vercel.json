@@ -1,7 +1,5 @@
 {
   "version": 2,
-  "installCommand": "npm install --legacy-peer-deps",
-  "buildCommand": "npm run build",
   "functions": {
     "app/api/**/*.ts": {
       "memory": 1024,
