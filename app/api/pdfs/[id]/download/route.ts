@@ -76,17 +76,25 @@ export async function GET(
             return NextResponse.json({ error: 'Access denied' }, { status: 403 });
         }
 
-        // Read file
-        const filePath = path.join(process.cwd(), pdf.fileUrl);
-        const fileBuffer = await readFile(filePath);
+        // Check if fileUrl is a blob URL or local path
+        const isBlob = pdf.fileUrl.startsWith('https://');
 
-        // Return file
-        return new NextResponse(fileBuffer, {
-            headers: {
-                'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="${pdf.fileName}"`,
-            },
-        });
+        if (isBlob) {
+            // For blob URLs, redirect to the URL directly
+            return NextResponse.redirect(pdf.fileUrl);
+        } else {
+            // For local files (development mode only)
+            const filePath = path.join(process.cwd(), pdf.fileUrl);
+            const fileBuffer = await readFile(filePath);
+
+            // Return file
+            return new NextResponse(fileBuffer, {
+                headers: {
+                    'Content-Type': 'application/pdf',
+                    'Content-Disposition': `attachment; filename="${pdf.fileName}"`,
+                },
+            });
+        }
     } catch (error: any) {
         console.error('Download PDF error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

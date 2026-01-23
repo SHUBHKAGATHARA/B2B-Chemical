@@ -1,3 +1,4 @@
+import { put } from '@vercel/blob';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
@@ -5,12 +6,12 @@ import { NextRequest } from 'next/server';
 
 export interface UploadedFile {
     filename: string;
-    filepath: string;
+    filepath: string; // Will be blob URL in production, local path in development
     size: number;
 }
 
 /**
- * Save uploaded file to uploads directory
+ * Save uploaded file to Vercel Blob (production) or local storage (development)
  */
 export async function saveUploadedFile(
     file: File,
@@ -25,21 +26,46 @@ export async function saveUploadedFile(
     const extension = path.extname(file.name);
     const filename = `${timestamp}-${randomString}${extension}`;
 
-    // Create upload directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'uploads', subfolder);
-    if (!existsSync(uploadDir)) {
-        await mkdir(uploadDir, { recursive: true });
+    // Check if we're in production (Vercel) or development
+    const isProduction = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+
+    if (isProduction && process.env.BLOB_READ_WRITE_TOKEN) {
+        // Production: Upload to Vercel Blob
+        try {
+            const blob = await put(`${subfolder}/${filename}`, buffer, {
+                access: 'public',
+                contentType: file.type || 'application/pdf',
+            });
+
+            console.log(`[Upload] File uploaded to Vercel Blob: ${blob.url}`);
+
+            return {
+                filename,
+                filepath: blob.url, // Return blob URL
+                size: buffer.length,
+            };
+        } catch (error) {
+            console.error('[Upload] Vercel Blob upload failed:', error);
+            throw new Error('Failed to upload file to cloud storage');
+        }
+    } else {
+        // Development: Save locally
+        console.log('[Upload] Using local file storage (development mode)');
+
+        const uploadDir = path.join(process.cwd(), 'uploads', subfolder);
+        if (!existsSync(uploadDir)) {
+            await mkdir(uploadDir, { recursive: true });
+        }
+
+        const filepath = path.join(uploadDir, filename);
+        await writeFile(filepath, buffer);
+
+        return {
+            filename,
+            filepath: `/uploads/${subfolder}/${filename}`,
+            size: buffer.length,
+        };
     }
-
-    // Save file
-    const filepath = path.join(uploadDir, filename);
-    await writeFile(filepath, buffer);
-
-    return {
-        filename,
-        filepath: `/uploads/${subfolder}/${filename}`,
-        size: buffer.length,
-    };
 }
 
 /**

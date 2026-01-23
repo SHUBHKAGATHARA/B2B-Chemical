@@ -14,6 +14,13 @@ const nextConfig = {
     experimental: {
         optimizeCss: false,
     },
+
+    // API Route Configuration
+    api: {
+        bodyParser: {
+            sizeLimit: '10mb', // Allow up to 10MB file uploads
+        },
+    },
     async headers() {
         return [
             {
