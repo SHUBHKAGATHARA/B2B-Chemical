@@ -76,18 +76,33 @@ export async function GET(
             return NextResponse.json({ error: 'Access denied' }, { status: 403 });
         }
 
-        // Check if fileUrl is a blob URL or local path
+        // Check if fileUrl is a blob URL, database storage, or local path
         const isBlob = pdf.fileUrl.startsWith('https://');
+        const isDatabase = pdf.fileUrl === 'database';
 
         if (isBlob) {
             // For blob URLs, redirect to the URL directly
             return NextResponse.redirect(pdf.fileUrl);
+        } else if (isDatabase) {
+            // For database storage, serve the base64 data
+            if (!pdf.fileData) {
+                return NextResponse.json({ error: 'PDF data not found' }, { status: 404 });
+            }
+
+            // Convert base64 back to buffer
+            const fileBuffer = Buffer.from(pdf.fileData, 'base64');
+
+            return new NextResponse(fileBuffer, {
+                headers: {
+                    'Content-Type': 'application/pdf',
+                    'Content-Disposition': `attachment; filename="${pdf.fileName}"`,
+                },
+            });
         } else {
             // For local files (development mode only)
             const filePath = path.join(process.cwd(), pdf.fileUrl);
             const fileBuffer = await readFile(filePath);
 
-            // Return file
             return new NextResponse(fileBuffer, {
                 headers: {
                     'Content-Type': 'application/pdf',

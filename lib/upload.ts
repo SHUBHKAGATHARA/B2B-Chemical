@@ -6,12 +6,13 @@ import { NextRequest } from 'next/server';
 
 export interface UploadedFile {
     filename: string;
-    filepath: string; // Will be blob URL in production, local path in development
+    filepath: string; // Will be blob URL, 'database', or local path
     size: number;
+    fileData?: string; // Base64 data when stored in database
 }
 
 /**
- * Save uploaded file to Vercel Blob (production) or local storage (development)
+ * Save uploaded file to Vercel Blob (if configured), Database (fallback), or local storage (development)
  */
 export async function saveUploadedFile(
     file: File,
@@ -29,24 +30,37 @@ export async function saveUploadedFile(
     // Check if we're in production (Vercel) or development
     const isProduction = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
 
-    if (isProduction && process.env.BLOB_READ_WRITE_TOKEN) {
-        // Production: Upload to Vercel Blob
-        try {
-            const blob = await put(`${subfolder}/${filename}`, buffer, {
-                access: 'public',
-                contentType: file.type || 'application/pdf',
-            });
+    if (isProduction) {
+        // Try Vercel Blob first if token is available
+        if (process.env.BLOB_READ_WRITE_TOKEN) {
+            try {
+                const blob = await put(`${subfolder}/${filename}`, buffer, {
+                    access: 'public',
+                    contentType: file.type || 'application/pdf',
+                });
 
-            console.log(`[Upload] File uploaded to Vercel Blob: ${blob.url}`);
+                console.log(`[Upload] File uploaded to Vercel Blob: ${blob.url}`);
 
-            return {
-                filename,
-                filepath: blob.url, // Return blob URL
-                size: buffer.length,
-            };
-        } catch (error) {
-            console.error('[Upload] Vercel Blob upload failed:', error);
-            throw new Error('Failed to upload file to cloud storage');
+                return {
+                    filename,
+                    filepath: blob.url,
+                    size: buffer.length,
+                };
+            } catch (error) {
+                console.error('[Upload] Vercel Blob upload failed:', error);
+                // Fall through to database storage
+            }
+        }
+
+        // Fallback to database storage (production without Blob configured)
+        console.log('[Upload] Using database storage (Blob not configured)');
+        const base64Data = buffer.toString('base64');
+
+        return {
+            filename,
+            filepath: 'database', // Special indicator
+            size: buffer.length,
+            fileData: base64Data,
         }
     } else {
         // Development: Save locally

@@ -76,6 +76,7 @@ model PdfUpload {
   id                    String    @id @default(cuid())
   fileName              String
   fileUrl               String
+  fileData              String?   @db.Text // Store PDF as base64 when blob storage unavailable
   uploadedByAdminId     String
   assignedDistributorId String?
   assignedGroup         AssignType @default(SINGLE)
