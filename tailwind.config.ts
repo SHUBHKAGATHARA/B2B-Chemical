@@ -8,6 +8,19 @@ const config: Config = {
     theme: {
         extend: {
             colors: {
+                // Orange accent for SpentiCachemicals design
+                orange: {
+                    50: '#fff7ed',
+                    100: '#ffedd5',
+                    200: '#fed7aa',
+                    300: '#fdba74',
+                    400: '#fb923c',
+                    500: '#FF6B35', // Primary orange
+                    600: '#ea580c',
+                    700: '#c2410c',
+                    800: '#9a3412',
+                    900: '#7c2d12',
+                },
                 primary: {
                     50: '#ecfdf5',
                     100: '#d1fae5',

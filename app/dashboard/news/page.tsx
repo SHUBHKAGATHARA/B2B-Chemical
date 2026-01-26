@@ -4,9 +4,8 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
-import { FileText, Calendar, Plus, Save, Trash2, Edit2, X, Share2, Search, ExternalLink } from 'lucide-react';
+import { FileText, Calendar, Plus, Save, Trash2, Edit2, X, Share2, ExternalLink, ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
-import { toast } from 'react-hot-toast';
 
 interface NewsItem {
     id: string;
@@ -23,12 +22,10 @@ export default function NewsManagementPage() {
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [editingItem, setEditingItem] = useState<NewsItem | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-    // Form State
     const [formData, setFormData] = useState({
         title: '',
-        category: 'General',
+        category: 'General Announcement',
         publishDate: new Date().toISOString().split('T')[0],
         content: '',
         source: '',
@@ -45,7 +42,6 @@ export default function NewsManagementPage() {
             setNews(response.data || []);
         } catch (error) {
             console.error('Failed to load news:', error);
-            // toast.error('Failed to load news');
         } finally {
             setLoading(false);
         }
@@ -61,10 +57,8 @@ export default function NewsManagementPage() {
 
             if (editingItem) {
                 await apiClient.updateNews(editingItem.id, payload);
-                // toast.success('News updated successfully');
             } else {
                 await apiClient.createNews(payload);
-                // toast.success('News created successfully');
             }
 
             setIsEditing(false);
@@ -81,7 +75,6 @@ export default function NewsManagementPage() {
         if (!confirm('Are you sure you want to delete this news article?')) return;
         try {
             await apiClient.deleteNews(id);
-            // toast.success('News deleted successfully');
             loadNews();
         } catch (error: any) {
             console.error('Failed to delete news:', error);
@@ -104,7 +97,7 @@ export default function NewsManagementPage() {
     const resetForm = () => {
         setFormData({
             title: '',
-            category: 'General',
+            category: 'General Announcement',
             publishDate: new Date().toISOString().split('T')[0],
             content: '',
             source: '',
@@ -123,30 +116,43 @@ export default function NewsManagementPage() {
     };
 
     return (
-        <div className="space-y-8 animate-fadeIn">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">News & Announcements</h2>
-                    <p className="text-gray-600 mt-1 text-sm sm:text-base">Keep your distributors informed with the latest updates</p>
+        <div className="min-h-screen bg-gray-50">
+            {/* Breadcrumb */}
+            <div className="mb-6">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>Dashboard</span>
+                    <ChevronRight className="w-4 h-4" />
+                    <span>News</span>
+                    <ChevronRight className="w-4 h-4" />
+                    <span className="text-gray-900 font-medium">Upload</span>
                 </div>
-                {!isEditing && (
+            </div>
+
+            {/* Header */}
+            <div className="mb-6">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">News Upload</h1>
+                <p className="text-gray-600">
+                    Create and publish new announcements to the company portal.
+                </p>
+            </div>
+
+            {!isEditing && (
+                <div className="mb-6">
                     <button
                         onClick={() => { resetForm(); setIsEditing(true); }}
-                        className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg flex items-center gap-2 justify-center"
+                        className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-orange-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
                     >
-                        <Plus className="w-5 h-5" />
+                        <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
                         Add News
                     </button>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Editor View */}
             {isEditing ? (
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-slideInRight">
-                    <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                        <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                            {editingItem ? <Edit2 className="w-5 h-5 text-blue-600" /> : <Plus className="w-5 h-5 text-green-600" />}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                        <h3 className="text-xl font-bold text-gray-900">
                             {editingItem ? 'Edit Article' : 'Create New Article'}
                         </h3>
                         <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -154,32 +160,32 @@ export default function NewsManagementPage() {
                         </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Title */}
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    Article Title <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none font-medium"
-                                    placeholder="Enter a catchy title..."
-                                    required
-                                />
-                            </div>
+                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                        {/* Title */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Title <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                                placeholder="Enter a catchy headline for your news..."
+                                required
+                            />
+                        </div>
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Category */}
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
                                 <select
                                     value={formData.category}
                                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                                 >
-                                    <option value="General">General</option>
+                                    <option value="General Announcement">General Announcement</option>
                                     <option value="Industry Update">Industry Update</option>
                                     <option value="Product Launch">Product Launch</option>
                                     <option value="Company News">Company News</option>
@@ -189,75 +195,67 @@ export default function NewsManagementPage() {
 
                             {/* Publish Date */}
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Publish Date</label>
-                                <div className="relative">
-                                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                                    <input
-                                        type="date"
-                                        value={formData.publishDate}
-                                        onChange={(e) => setFormData({ ...formData, publishDate: e.target.value })}
-                                        className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Source */}
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Source / Reference (Optional)</label>
-                                <div className="relative">
-                                    <ExternalLink className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                                    <input
-                                        type="text"
-                                        value={formData.source}
-                                        onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                                        className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none"
-                                        placeholder="e.g. Industry Magazine, External Link..."
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Content */}
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-bold text-gray-700 mb-2">
-                                    Content <span className="text-red-500">*</span>
-                                </label>
-                                <textarea
-                                    value={formData.content}
-                                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none min-h-[200px]"
-                                    placeholder="Write the full article content here..."
-                                    required
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Publish Date</label>
+                                <input
+                                    type="date"
+                                    value={formData.publishDate}
+                                    onChange={(e) => setFormData({ ...formData, publishDate: e.target.value })}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                                 />
                             </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-end pt-4 border-t border-gray-100">
+                        {/* Source */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Source / Reference (Optional)</label>
+                            <input
+                                type="text"
+                                value={formData.source}
+                                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                                placeholder="e.g. BBC Reuters..."
+                            />
+                        </div>
+
+                        {/* Content */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Content <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                value={formData.content}
+                                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none min-h-[200px]"
+                                placeholder="Write your news content here. You can use Markdown formatting."
+                                required
+                            />
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 pt-4 border-t border-gray-200">
                             <button
                                 type="button"
                                 onClick={() => setIsEditing(false)}
-                                className="w-full sm:w-auto px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors order-2 sm:order-1"
+                                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="w-full sm:w-auto px-8 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg flex items-center gap-2 justify-center order-1 sm:order-2"
+                                className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-orange-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 justify-center group"
                             >
-                                <Save className="w-5 h-5" />
+                                <Save className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
                                 {editingItem ? 'Update Article' : 'Publish Article'}
                             </button>
                         </div>
                     </form>
                 </div>
             ) : (
-                /* News Grid View */
+                /* News List View */
                 <>
-                    {/* Search/Filter Bar (Placeholder for future) */}
-                    {/* <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex gap-4"> ... </div> */}
-
                     {loading ? (
                         <div className="text-center py-20">
-                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-4"></div>
+                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-4"></div>
                             <p className="text-gray-500">Loading latest news...</p>
                         </div>
                     ) : news.length === 0 ? (
@@ -267,15 +265,18 @@ export default function NewsManagementPage() {
                             <p className="text-gray-500 mb-6">Start by creating your first announcement.</p>
                             <button
                                 onClick={() => { resetForm(); setIsEditing(true); }}
-                                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-orange-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 group"
                             >
-                                Create Article
+                                <span className="flex items-center gap-2">
+                                    <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+                                    Create Article
+                                </span>
                             </button>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-6">
                             {news.map((item) => (
-                                <div key={item.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 transition-all hover:shadow-md hover:border-green-200 group">
+                                <div key={item.id} className="bg-white rounded-2xl border border-gray-200 p-6 transition-all hover:shadow-md hover:border-orange-200 group">
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-3">
@@ -294,7 +295,7 @@ export default function NewsManagementPage() {
                                                 )}
                                             </div>
 
-                                            <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-green-700 transition-colors">
+                                            <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-orange-700 transition-colors">
                                                 {item.title}
                                             </h3>
 
@@ -310,14 +311,14 @@ export default function NewsManagementPage() {
                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => handleEdit(item)}
-                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                className="group p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md border border-blue-100"
                                                 title="Edit"
                                             >
                                                 <Edit2 className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(item.id)}
-                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                className="group p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md border border-red-100"
                                                 title="Delete"
                                             >
                                                 <Trash2 className="w-4 h-4" />

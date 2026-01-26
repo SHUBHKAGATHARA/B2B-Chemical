@@ -1,5 +1,5 @@
 import Sidebar from '@/components/layout/Sidebar';
-import TopBar from '@/components/layout/TopBar';
+import Header from '@/components/layout/Header';
 import { getSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 
@@ -12,7 +12,7 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }) {
     const session = await getSession();
-    
+
     // Redirect to login if no session (shouldn't happen due to middleware, but safety check)
     if (!session) {
         redirect('/login');
@@ -21,8 +21,11 @@ export default async function DashboardLayout({
     return (
         <div className="min-h-screen bg-gray-50">
             <Sidebar userRole={session.role} />
-            <TopBar user={session} />
-            <main className="ml-64 pt-16 p-6">
+            <Header
+                userName={session.fullName || session.email}
+                userRole={session.role === 'ADMIN' ? 'Super Admin' : 'Distributor'}
+            />
+            <main className="ml-64 pt-16 p-8">
                 {children}
             </main>
         </div>
