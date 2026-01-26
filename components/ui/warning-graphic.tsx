@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, Variants } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface WarningGraphicProps {
@@ -30,7 +30,7 @@ export function WarningGraphic({
     const shouldAnimate = enableAnimations && !shouldReduceMotion;
     const speedMultiplier = 1 / animationSpeed;
 
-    const containerVariants = {
+    const containerVariants: Variants = {
         hidden: { opacity: 0 },
         visible: {
             opacity: 1,
@@ -42,7 +42,7 @@ export function WarningGraphic({
     };
 
     // First: Path lines (corner/background elements) draw from inside out
-    const pathLineVariants = {
+    const pathLineVariants: Variants = {
         hidden: {
             pathLength: 0,
             opacity: 0.3, // Keep opacity constant for visibility
@@ -58,7 +58,7 @@ export function WarningGraphic({
     };
 
     // Second: Triangle outline draws
-    const triangleVariants = {
+    const triangleVariants: Variants = {
         hidden: {
             opacity: 0,
             pathLength: 0,
@@ -75,7 +75,7 @@ export function WarningGraphic({
     };
 
     // Corner rectangles - fade in last
-    const elementVariants = {
+    const elementVariants: Variants = {
         hidden: {
             opacity: 0,
             scale: 0.5,
@@ -95,7 +95,7 @@ export function WarningGraphic({
     };
 
     // Third: Interior stripes animate from center outward
-    const leftStripeVariants = {
+    const leftStripeVariants: Variants = {
         hidden: {
             opacity: 0,
             scaleX: 0,
@@ -113,7 +113,7 @@ export function WarningGraphic({
         },
     };
 
-    const rightStripeVariants = {
+    const rightStripeVariants: Variants = {
         hidden: {
             opacity: 0,
             scaleX: 0,
@@ -131,7 +131,7 @@ export function WarningGraphic({
         },
     };
 
-    const stripesContainerVariants = {
+    const stripesContainerVariants: Variants = {
         hidden: {},
         visible: {
             transition: {
@@ -142,7 +142,7 @@ export function WarningGraphic({
     };
 
     // Fourth: Exclamation with overshoot
-    const exclamationVariants = {
+    const exclamationVariants: Variants = {
         hidden: {
             opacity: 0,
             scale: 0,
