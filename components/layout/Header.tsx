@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, Bell, ChevronDown, User } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 interface HeaderProps {
     userName?: string;
@@ -11,6 +13,12 @@ interface HeaderProps {
 
 export default function Header({ userName = 'Admin User', userRole = 'Super Admin', userAvatar }: HeaderProps) {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        await apiClient.logout();
+        router.push('/login');
+    };
 
     return (
         <header className="h-16 bg-white border-b border-gray-200 fixed top-0 right-0 left-64 z-20 px-8">
@@ -64,14 +72,10 @@ export default function Header({ userName = 'Admin User', userRole = 'Super Admi
                         {/* Dropdown Menu */}
                         {showProfileMenu && (
                             <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-                                <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                    Profile Settings
-                                </button>
-                                <button className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                    Account Settings
-                                </button>
-                                <div className="border-t border-gray-200 my-2"></div>
-                                <button className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                >
                                     Log Out
                                 </button>
                             </div>
