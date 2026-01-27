@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { verifyToken } from './jwt';
 
 export interface Session {
@@ -9,12 +9,29 @@ export interface Session {
 }
 
 /**
- * Get current session from JWT token stored in auth_token cookie
+ * Get token from request - supports both cookie and Authorization header
+ * Mobile apps use Authorization: Bearer <token>
+ * Web apps use auth_token cookie
+ */
+function getTokenFromRequest(): string | null {
+    // First check Authorization header (for mobile apps)
+    const headerStore = headers();
+    const authHeader = headerStore.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.substring(7); // Remove 'Bearer ' prefix
+    }
+    
+    // Fallback to cookie (for web apps)
+    const cookieStore = cookies();
+    return cookieStore.get('auth_token')?.value || null;
+}
+
+/**
+ * Get current session from JWT token stored in auth_token cookie or Authorization header
  */
 export async function getSession(): Promise<Session | null> {
     try {
-        const cookieStore = cookies();
-        const token = cookieStore.get('auth_token')?.value;
+        const token = getTokenFromRequest();
 
         if (!token) {
             return null;

@@ -5,9 +5,25 @@ import { verifyToken } from './lib/auth/jwt';
 // strictly public routes
 const PUBLIC_ROUTES = ['/login', '/api/auth/login'];
 
+/**
+ * Extract token from request - supports both cookie and Authorization header
+ * Mobile apps use Authorization: Bearer <token>
+ * Web apps use auth_token cookie
+ */
+function getTokenFromRequest(request: NextRequest): string | null {
+    // First check Authorization header (for mobile apps)
+    const authHeader = request.headers.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.substring(7); // Remove 'Bearer ' prefix
+    }
+    
+    // Fallback to cookie (for web apps)
+    return request.cookies.get('auth_token')?.value || null;
+}
+
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
-    const token = request.cookies.get('auth_token')?.value;
+    const token = getTokenFromRequest(request);
 
     console.log(`[Middleware] ${request.method} ${pathname} - Token: ${!!token}`);
 
