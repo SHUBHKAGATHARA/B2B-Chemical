@@ -19,6 +19,7 @@ export default function PdfsPage() {
     const [dragActive, setDragActive] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [isAdmin, setIsAdmin] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -117,8 +118,53 @@ export default function PdfsPage() {
         try {
             await apiClient.deletePdf(id);
             setPdfs(pdfs.filter(p => p.id !== id));
+            setSelectedIds(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(id);
+                return newSet;
+            });
         } catch (error: any) {
             alert(error.message || 'Failed to delete PDF');
+        }
+    };
+
+    const toggleSelection = (id: string) => {
+        setSelectedIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+            } else {
+                newSet.add(id);
+            }
+            return newSet;
+        });
+    };
+
+    const toggleAll = () => {
+        const allFilteredSelected = filteredPdfs.length > 0 && filteredPdfs.every(p => selectedIds.has(p.id));
+
+        if (allFilteredSelected) {
+            const newSet = new Set(selectedIds);
+            filteredPdfs.forEach(p => newSet.delete(p.id));
+            setSelectedIds(newSet);
+        } else {
+            const newSet = new Set(selectedIds);
+            filteredPdfs.forEach(p => newSet.add(p.id));
+            setSelectedIds(newSet);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!confirm(`Are you sure you want to delete ${selectedIds.size} PDFs? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await Promise.all(Array.from(selectedIds).map(id => apiClient.deletePdf(id)));
+            setPdfs(pdfs.filter(p => !selectedIds.has(p.id)));
+            setSelectedIds(new Set());
+        } catch (error: any) {
+            alert(error.message || 'Failed to delete some PDFs');
         }
     };
 
@@ -311,7 +357,18 @@ export default function PdfsPage() {
             {/* Recent Transfers */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <h3 className="text-lg font-bold text-gray-900">RECENT TRANSFERS</h3>
+                    <div className="flex items-center gap-4">
+                        <h3 className="text-lg font-bold text-gray-900">RECENT TRANSFERS</h3>
+                        {selectedIds.size > 0 && isAdmin && (
+                            <button
+                                onClick={handleBulkDelete}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors animate-in fade-in"
+                            >
+                                <Trash className="w-4 h-4" />
+                                Delete ({selectedIds.size})
+                            </button>
+                        )}
+                    </div>
                     <div className="relative">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                         <input
@@ -334,6 +391,16 @@ export default function PdfsPage() {
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr className="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    {isAdmin && (
+                                        <th className="px-6 py-3 w-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={filteredPdfs.length > 0 && filteredPdfs.every(p => selectedIds.has(p.id))}
+                                                onChange={toggleAll}
+                                                className="w-4 h-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded cursor-pointer"
+                                            />
+                                        </th>
+                                    )}
                                     <th className="px-6 py-3">Document</th>
                                     <th className="px-6 py-3">Uploaded By</th>
                                     <th className="px-6 py-3">Assignment</th>
@@ -344,7 +411,17 @@ export default function PdfsPage() {
                             </thead>
                             <tbody className="divide-y divide-gray-200">
                                 {filteredPdfs.map((pdf) => (
-                                    <tr key={pdf.id} className="hover:bg-gray-50 transition-colors">
+                                    <tr key={pdf.id} className={`hover:bg-gray-50 transition-colors ${selectedIds.has(pdf.id) ? 'bg-orange-50/30' : ''}`}>
+                                        {isAdmin && (
+                                            <td className="px-6 py-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.has(pdf.id)}
+                                                    onChange={() => toggleSelection(pdf.id)}
+                                                    className="w-4 h-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded cursor-pointer"
+                                                />
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
