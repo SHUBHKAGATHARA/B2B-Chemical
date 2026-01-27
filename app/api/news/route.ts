@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyToken } from '@/lib/auth/jwt';
+import { getSession } from '@/lib/auth/session';
 import { z } from 'zod';
 
 // Force dynamic rendering and Node.js runtime
@@ -21,9 +21,10 @@ const newsSchema = z.object({
 
 export async function GET(request: NextRequest) {
     try {
-        const token = request.cookies.get('auth_token')?.value;
-        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        await verifyToken(token);
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         const { searchParams } = new URL(request.url);
         const limit = parseInt(searchParams.get('limit') || '50');
@@ -61,9 +62,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const token = request.cookies.get('auth_token')?.value;
-        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        const payload = await verifyToken(token);
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         const body = await request.json();
 
@@ -87,7 +89,7 @@ export async function POST(request: NextRequest) {
                 imageUrl: data.imageUrl,
                 source: data.source,
                 publishDate: data.publishDate ? new Date(data.publishDate) : new Date(),
-                authorId: payload.userId,
+                authorId: session.userId,
             }
         });
 

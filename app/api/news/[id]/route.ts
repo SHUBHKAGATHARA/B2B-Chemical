@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyToken } from '@/lib/auth/jwt';
+import { getSession } from '@/lib/auth/session';
 
 // Force dynamic rendering and Node.js runtime
 export const dynamic = 'force-dynamic';
@@ -12,9 +12,10 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        const token = request.cookies.get('auth_token')?.value;
-        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        await verifyToken(token);
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         const { id } = params;
 
@@ -38,9 +39,10 @@ export async function PUT(
     { params }: { params: { id: string } }
 ) {
     try {
-        const token = request.cookies.get('auth_token')?.value;
-        if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        await verifyToken(token);
+        const session = await getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         const { id } = params;
         const body = await request.json();
