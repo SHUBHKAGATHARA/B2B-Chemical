@@ -222,6 +222,10 @@ class ApiClient {
         return `${this.baseUrl}/pdfs/${id}/download`;
     }
 
+    async deletePdf(id: string) {
+        return this.request(`/pdfs/${id}`, { method: 'DELETE' });
+    }
+
     // Notifications
     async getNotifications(params?: Record<string, string>) {
         const response = await this.request<PaginatedResponse<any>>(

@@ -4,8 +4,9 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useRef } from 'react';
-import { Upload, Download, FileText, Search, Filter, X, ChevronRight, Building2, Users } from 'lucide-react';
+import { Upload, Download, FileText, Search, Filter, X, ChevronRight, Building2, Users, Trash } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { authStorage } from '@/lib/auth-storage';
 
 export default function PdfsPage() {
     const [pdfs, setPdfs] = useState<any[]>([]);
@@ -17,9 +18,14 @@ export default function PdfsPage() {
     const [uploading, setUploading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isAdmin, setIsAdmin] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        const user = authStorage.getUser();
+        if (user && user.role === 'ADMIN') {
+            setIsAdmin(true);
+        }
         loadData();
     }, []);
 
@@ -102,6 +108,19 @@ export default function PdfsPage() {
         pdf.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         pdf.uploadedBy?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this PDF? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            await apiClient.deletePdf(id);
+            setPdfs(pdfs.filter(p => p.id !== id));
+        } catch (error: any) {
+            alert(error.message || 'Failed to delete PDF');
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -371,6 +390,15 @@ export default function PdfsPage() {
                                                 >
                                                     <Download className="w-5 h-5" />
                                                 </a>
+                                                {isAdmin && (
+                                                    <button
+                                                        onClick={() => handleDelete(pdf.id)}
+                                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash className="w-5 h-5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
