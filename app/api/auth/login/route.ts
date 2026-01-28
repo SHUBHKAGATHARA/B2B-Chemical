@@ -10,6 +10,21 @@ import {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// CORS headers for mobile app support
+const CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+};
+
+// Handle preflight requests for mobile apps
+export async function OPTIONS() {
+    return new NextResponse(null, {
+        status: 204,
+        headers: CORS_HEADERS,
+    });
+}
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
@@ -50,6 +65,7 @@ export async function POST(request: NextRequest) {
                 status: 200,
                 headers: {
                     'Set-Cookie': cookieHeader,
+                    ...CORS_HEADERS,
                 },
             }
         );
@@ -67,7 +83,10 @@ export async function POST(request: NextRequest) {
                         field: error.field,
                     },
                 },
-                { status: error.status }
+                { 
+                    status: error.status,
+                    headers: CORS_HEADERS,
+                }
             );
         }
 
@@ -99,7 +118,10 @@ export async function POST(request: NextRequest) {
                     message: errorMessage,
                 },
             },
-            { status: 500 }
+            { 
+                status: 500,
+                headers: CORS_HEADERS,
+            }
         );
     }
 }

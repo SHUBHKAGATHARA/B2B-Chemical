@@ -31,11 +31,20 @@ export default function LoginPage() {
             }
 
             await apiClient.login(trimmedEmail, trimmedPassword);
-            await new Promise(resolve => setTimeout(resolve, 100));
-            window.location.replace('/dashboard');
+            
+            // Wait a bit longer for the cookie to be properly set by the browser
+            // This helps prevent "Session Expired" errors due to race conditions
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Use router.push with a full page reload to ensure cookies are read fresh
+            window.location.href = '/dashboard';
         } catch (err: any) {
             console.error('Login failed:', err);
-            const errorMessage = err?.message || err?.error?.message || 'An error occurred during login. Please try again.';
+            // Don't show "Session expired" error during login attempt
+            let errorMessage = err?.message || err?.error?.message || 'An error occurred during login. Please try again.';
+            if (errorMessage.toLowerCase().includes('session expired')) {
+                errorMessage = 'Login failed. Please try again.';
+            }
             setError(errorMessage);
             setLoading(false);
         }

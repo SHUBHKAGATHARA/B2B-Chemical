@@ -5,6 +5,24 @@ import { verifyToken } from './lib/auth/jwt';
 // strictly public routes
 const PUBLIC_ROUTES = ['/login', '/api/auth/login'];
 
+// CORS headers for mobile app support
+const CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Max-Age': '86400',
+};
+
+/**
+ * Create a JSON response with CORS headers for mobile apps
+ */
+function createApiResponse(body: object, status: number) {
+    return NextResponse.json(body, {
+        status,
+        headers: CORS_HEADERS,
+    });
+}
+
 /**
  * Extract token from request - supports both cookie and Authorization header
  * Mobile apps use Authorization: Bearer <token>
@@ -23,6 +41,15 @@ function getTokenFromRequest(request: NextRequest): string | null {
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    
+    // Handle CORS preflight requests for mobile apps
+    if (request.method === 'OPTIONS') {
+        return new NextResponse(null, {
+            status: 204,
+            headers: CORS_HEADERS,
+        });
+    }
+    
     const token = getTokenFromRequest(request);
 
     console.log(`[Middleware] ${request.method} ${pathname} - Token: ${!!token}`);
@@ -31,17 +58,30 @@ export async function middleware(request: NextRequest) {
     if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
         // We do NOT redirect to dashboard even if token exists.
         // User wants to always see login page when visiting /login
-        return NextResponse.next();
+        const response = NextResponse.next();
+        // Add CORS headers to public API routes too
+        if (pathname.startsWith('/api')) {
+            Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+                response.headers.set(key, value);
+            });
+        }
+        return response;
     }
 
     // 2. Enforce Authentication for EVERYTHING else (Deny by Default)
     // If no token is present
     if (!token) {
-        // If it's an API route, return 401 JSON
+        // If it's an API route, return 401 JSON with CORS headers for mobile
         if (pathname.startsWith('/api')) {
-            return NextResponse.json(
-                { error: { message: 'Unauthorized: Please login', code: 'UNAUTHORIZED' } },
-                { status: 401 }
+            return createApiResponse(
+                { 
+                    success: false,
+                    error: { 
+                        message: 'Unauthorized: Please login', 
+                        code: 'UNAUTHORIZED' 
+                    } 
+                },
+                401
             );
         }
         // If it's a page navigation (including root '/'), redirect to login
@@ -54,16 +94,30 @@ export async function middleware(request: NextRequest) {
     try {
         await verifyToken(token);
         // Token is valid, allow access
-        return NextResponse.next();
-    } catch (error) {
+        const response = NextResponse.next();
+        // Add CORS headers to all API responses for mobile apps
+        if (pathname.startsWith('/api')) {
+            Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+                response.headers.set(key, value);
+            });
+        }
+        return response;
+    } catch (error: any) {
         // Token is invalid/expired
         console.error(`[Middleware] Token verification failed for ${pathname}:`, error);
 
-        // If API, return 401
+        // If API, return 401 with specific error code for mobile apps
         if (pathname.startsWith('/api')) {
-            return NextResponse.json(
-                { error: { message: 'Invalid or expired token', code: 'INVALID_TOKEN' } },
-                { status: 401 }
+            const isExpired = error.message?.includes('expired');
+            return createApiResponse(
+                { 
+                    success: false,
+                    error: { 
+                        message: isExpired ? 'Token has expired' : 'Invalid token', 
+                        code: isExpired ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN' 
+                    } 
+                },
+                401
             );
         }
 

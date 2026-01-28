@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { authStorage } from '@/lib/auth-storage';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -19,30 +20,45 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
             // Only check for dashboard routes
             if (pathname.startsWith('/dashboard')) {
+                // First check if we have a token in localStorage (quick check)
+                const hasLocalToken = authStorage.hasToken();
+                
+                if (!hasLocalToken) {
+                    // No token at all, redirect immediately
+                    router.push('/login');
+                    setIsChecking(false);
+                    return;
+                }
+                
                 try {
                     const response = await fetch('/api/auth/me', {
                         method: 'GET',
                         credentials: 'include', // Important: include cookies
                         headers: {
                             'Cache-Control': 'no-cache',
+                            // Also send Bearer token for redundancy
+                            ...(hasLocalToken && { 'Authorization': `Bearer ${authStorage.getToken()}` }),
                         },
                     });
 
                     if (!response.ok) {
-                        // Not authenticated, redirect to login
+                        // Token invalid, clear storage and redirect to login
+                        authStorage.clearAll();
                         router.push('/login');
                     }
                 } catch (error) {
                     console.error('Auth check failed:', error);
-                    // On error, redirect to login to be safe
-                    router.push('/login');
+                    // On network error, don't redirect - let user continue
+                    // The middleware will handle actual auth failures
                 }
             }
             
             setIsChecking(false);
         };
 
-        checkAuth();
+        // Small delay to allow cookies to be set after login redirect
+        const timer = setTimeout(checkAuth, 50);
+        return () => clearTimeout(timer);
     }, [pathname, router]);
 
     // Show nothing while checking auth (middleware will handle the redirect)

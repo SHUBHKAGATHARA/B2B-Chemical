@@ -61,12 +61,22 @@ class ApiClient {
         const data = await response.json();
 
         if (response.status === 401) {
-            if (typeof window !== 'undefined') {
+            // Don't redirect or show session expired for login endpoint
+            const isLoginEndpoint = endpoint === '/auth/login';
+            
+            if (!isLoginEndpoint && typeof window !== 'undefined') {
                 authStorage.clearAll();
                 // Optional: Store current path to redirect back after login
                 // sessionStorage.setItem('redirect_url', window.location.pathname);
                 window.location.href = '/login';
             }
+            
+            // For login endpoint, throw the actual error message from server
+            if (isLoginEndpoint) {
+                const apiError = data as ApiError;
+                throw new Error(apiError.error?.message || 'Invalid credentials');
+            }
+            
             // Still throw to stop execution flow in the caller
             throw new Error('Session expired. Please login again.');
         }

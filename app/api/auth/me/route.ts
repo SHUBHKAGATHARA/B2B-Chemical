@@ -5,6 +5,20 @@ import { requireAuth } from '@/lib/auth/session';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// CORS headers for mobile app support
+const CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+};
+
+// Handle preflight requests for mobile apps
+export async function OPTIONS() {
+    return new NextResponse(null, {
+        status: 204,
+        headers: CORS_HEADERS,
+    });
+}
 
 export async function GET(request: NextRequest) {
     try {
@@ -25,7 +39,10 @@ export async function GET(request: NextRequest) {
                     timestamp: new Date().toISOString(),
                 },
             },
-            { status: 200 }
+            { 
+                status: 200,
+                headers: CORS_HEADERS,
+            }
         );
     } catch (error: any) {
         return NextResponse.json(
@@ -36,7 +53,10 @@ export async function GET(request: NextRequest) {
                     message: error.message || 'Not authenticated',
                 },
             },
-            { status: 401 }
+            { 
+                status: 401,
+                headers: CORS_HEADERS,
+            }
         );
     }
 }
