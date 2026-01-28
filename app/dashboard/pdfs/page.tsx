@@ -173,21 +173,25 @@ export default function PdfsPage() {
             {/* Breadcrumb */}
             <div className="mb-6">
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span>Transfers</span>
+                    <span>{isAdmin ? 'Transfers' : 'Content'}</span>
                     <ChevronRight className="w-4 h-4" />
-                    <span className="text-gray-900 font-medium">PDF Transfer</span>
+                    <span className="text-gray-900 font-medium">{isAdmin ? 'PDF Transfer' : 'My PDFs'}</span>
                 </div>
             </div>
 
             {/* Header */}
             <div className="mb-6">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">PDF Transfer</h1>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{isAdmin ? 'PDF Transfer' : 'My PDFs'}</h1>
                 <p className="text-gray-600">
-                    Securely upload and manage your chemical data reports. Ensure all PDF files are compliant with the 2026 safety standards before submission.
+                    {isAdmin 
+                        ? 'Securely upload and manage your chemical data reports. Ensure all PDF files are compliant with the 2026 safety standards before submission.'
+                        : 'View and download PDF documents shared with you.'
+                    }
                 </p>
             </div>
 
-            {/* Upload Area */}
+            {/* Upload Area - Admin Only */}
+            {isAdmin && (
             <div className="bg-white rounded-xl border border-gray-200 p-8 mb-6">
                 {!file ? (
                     <div
@@ -353,12 +357,13 @@ export default function PdfsPage() {
                     </div>
                 </div>
             </div>
+            )}
 
-            {/* Recent Transfers */}
+            {/* Recent Transfers / My PDFs */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <h3 className="text-lg font-bold text-gray-900">RECENT TRANSFERS</h3>
+                        <h3 className="text-lg font-bold text-gray-900">{isAdmin ? 'RECENT TRANSFERS' : 'MY DOCUMENTS'}</h3>
                         {selectedIds.size > 0 && isAdmin && (
                             <button
                                 onClick={handleBulkDelete}

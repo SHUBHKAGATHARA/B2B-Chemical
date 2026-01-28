@@ -51,9 +51,10 @@ export default function Sidebar({ userRole }: SidebarProps) {
             ]
         },
         {
-            title: 'CONTENT & TRANSFERS',
+            title: 'CONTENT',
             links: [
                 { href: '/dashboard/pdfs', label: 'My PDFs', icon: FileText },
+                { href: '/dashboard/news', label: 'News & Updates', icon: Newspaper },
             ]
         },
     ];
