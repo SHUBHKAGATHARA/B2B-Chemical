@@ -66,9 +66,21 @@ export async function GET(request: NextRequest) {
                 return paginatedResponse([], buildPaginationMeta(page, limit, 0));
             }
 
+            // Get all PDF IDs that have notifications for this distributor
+            const notifications = await prisma.notification.findMany({
+                where: { distId: distributorId },
+                select: { pdfId: true },
+            });
+            const notifiedPdfIds = notifications.map(n => n.pdfId);
+
+            // Distributor can see PDFs that:
+            // 1. Are directly assigned to them (assignedDistributorId)
+            // 2. Are assigned to ALL distributors
+            // 3. Have a notification for them (for MULTIPLE assignments)
             where.OR = [
                 { assignedDistributorId: distributorId },
                 { assignedGroup: 'ALL' },
+                { id: { in: notifiedPdfIds } },
             ];
         }
 
