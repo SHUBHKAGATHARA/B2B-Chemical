@@ -32,14 +32,25 @@ export default function PdfsPage() {
 
     const loadData = async () => {
         try {
-            const [pdfsData, distsData] = await Promise.all([
-                apiClient.getPdfs(),
-                apiClient.getDistributors(),
-            ]);
-            setPdfs(pdfsData.data || []);
-            setDistributors(distsData.data || []);
+            // Check user role
+            const user = authStorage.getUser();
+            const isAdminUser = user && user.role === 'ADMIN';
+            
+            // Distributors don't need the distributors list
+            if (isAdminUser) {
+                const [pdfsData, distsData] = await Promise.all([
+                    apiClient.getPdfs(),
+                    apiClient.getDistributors(),
+                ]);
+                setPdfs(pdfsData.data || []);
+                setDistributors(distsData.data || []);
+            } else {
+                // Distributors only need PDFs
+                const pdfsData = await apiClient.getPdfs();
+                setPdfs(pdfsData.data || []);
+            }
         } catch (error) {
-            console.error('Failed to load data');
+            console.error('Failed to load data:', error);
         } finally {
             setLoading(false);
         }
