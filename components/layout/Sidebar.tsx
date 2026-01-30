@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
     Users,
+    User,
     Building2,
     FileText,
     Newspaper,
     Beaker,
     LogOut,
+    Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +43,12 @@ export default function Sidebar({ userRole }: SidebarProps) {
                 { href: '/dashboard/news', label: 'News Transfer', icon: Newspaper },
             ]
         },
+        {
+            title: 'SETTINGS',
+            links: [
+                { href: '/dashboard/profile', label: 'My Profile', icon: User },
+            ]
+        },
     ];
 
     const distributorSections = [
@@ -55,6 +63,12 @@ export default function Sidebar({ userRole }: SidebarProps) {
             links: [
                 { href: '/dashboard/pdfs', label: 'My PDFs', icon: FileText },
                 { href: '/dashboard/news', label: 'News & Updates', icon: Newspaper },
+            ]
+        },
+        {
+            title: 'SETTINGS',
+            links: [
+                { href: '/dashboard/profile', label: 'My Profile', icon: User },
             ]
         },
     ];

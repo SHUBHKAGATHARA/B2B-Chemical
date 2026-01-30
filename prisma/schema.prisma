@@ -39,6 +39,7 @@ model User {
   passwordHash            String
   role                    Role      @default(DISTRIBUTOR)
   status                  Status    @default(ACTIVE)
+  profilePicture          String?   // Cloudinary URL for profile picture
   notificationPreferences Json?     // {inApp, push, email, categories}
   createdAt               DateTime  @default(now())
   lastLogin               DateTime?
