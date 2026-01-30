@@ -139,7 +139,6 @@ export async function POST(request: NextRequest) {
                 address,
                 taxRegistrationId: taxRegistrationId || null,
                 logoUrl,
-                createdBy: session.userId,
             },
         });
 

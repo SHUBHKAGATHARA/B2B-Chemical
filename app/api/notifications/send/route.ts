@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
             where: {
                 id: { in: distributorIds },
             },
-            select: { id: true, name: true },
+            select: { id: true, companyName: true },
         });
 
         if (distributors.length !== distributorIds.length) {
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
                 pdfFileName: pdf.fileName,
                 distributors: distributors.map(d => ({
                     id: d.id,
-                    name: d.name,
+                    name: d.companyName,
                 })),
             },
         });
