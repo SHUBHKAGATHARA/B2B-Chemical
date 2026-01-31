@@ -4,7 +4,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
-import { FileText, Calendar, Plus, Save, Trash2, Edit2, X, Share2, ExternalLink, ChevronRight, Newspaper } from 'lucide-react';
+import { FileText, Calendar, Plus, Save, Trash2, Edit2, X, Share2, ExternalLink, ChevronRight, Newspaper, Clock, TrendingUp, Bookmark, Eye, MessageCircle, ArrowUpRight, Sparkles, Tag } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { authStorage } from '@/lib/auth-storage';
 
@@ -46,7 +46,11 @@ export default function NewsManagementPage() {
         try {
             setLoading(true);
             const response = await apiClient.getNews({ limit: '50' });
-            setNews(response.data || []);
+            // Sort by date, most recent first
+            const sortedNews = (response.data || []).sort((a: NewsItem, b: NewsItem) => 
+                new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime()
+            );
+            setNews(sortedNews);
         } catch (error) {
             console.error('Failed to load news:', error);
         } finally {
@@ -114,12 +118,40 @@ export default function NewsManagementPage() {
 
     const getCategoryColor = (category: string) => {
         switch (category) {
-            case 'Industry Update': return 'bg-blue-100 text-blue-700';
-            case 'Product Launch': return 'bg-purple-100 text-purple-700';
-            case 'Regulatory': return 'bg-red-100 text-red-700';
-            case 'Company News': return 'bg-green-100 text-green-700';
-            default: return 'bg-gray-100 text-gray-700';
+            case 'Industry Update': return 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-200';
+            case 'Product Launch': return 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-200';
+            case 'Regulatory': return 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-200';
+            case 'Company News': return 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-200';
+            default: return 'bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-lg shadow-gray-200';
         }
+    };
+
+    const getCategoryIcon = (category: string) => {
+        switch (category) {
+            case 'Industry Update': return <TrendingUp className="w-3.5 h-3.5" />;
+            case 'Product Launch': return <Sparkles className="w-3.5 h-3.5" />;
+            case 'Regulatory': return <FileText className="w-3.5 h-3.5" />;
+            case 'Company News': return <Newspaper className="w-3.5 h-3.5" />;
+            default: return <Tag className="w-3.5 h-3.5" />;
+        }
+    };
+
+    const getReadingTime = (content: string) => {
+        const wordsPerMinute = 200;
+        const words = content.split(/\s+/).length;
+        const minutes = Math.ceil(words / wordsPerMinute);
+        return minutes;
+    };
+
+    const getGradientBackground = (index: number) => {
+        const gradients = [
+            'from-teal-50 via-cyan-50/50 to-transparent',
+            'from-emerald-50 via-teal-100/50 to-transparent',
+            'from-purple-50 via-purple-100/50 to-transparent',
+            'from-green-50 via-green-100/50 to-transparent',
+            'from-pink-50 via-pink-100/50 to-transparent',
+        ];
+        return gradients[index % gradients.length];
     };
 
     return (
@@ -140,26 +172,39 @@ export default function NewsManagementPage() {
             </div>
 
             {/* Header */}
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    {isAdmin ? 'News Upload' : 'News & Updates'}
-                </h1>
-                <p className="text-gray-600">
-                    {isAdmin 
-                        ? 'Create and publish new announcements to the company portal.'
-                        : 'Stay updated with the latest company announcements and news.'
-                    }
-                </p>
+            <div className="mb-8 relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-teal-300/20 via-cyan-300/20 to-emerald-300/20 rounded-3xl blur-3xl"></div>
+                <div className="relative">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-3 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-2xl shadow-lg shadow-teal-200">
+                            <Newspaper className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-teal-700 to-gray-900 bg-clip-text text-transparent">
+                                {isAdmin ? 'News Management' : 'Latest News & Updates'}
+                            </h1>
+                        </div>
+                    </div>
+                    <p className="text-gray-600 text-lg ml-16">
+                        {isAdmin 
+                            ? 'Create and publish engaging announcements to keep everyone informed.'
+                            : 'Stay ahead with the latest company announcements, industry insights, and updates.'
+                        }
+                    </p>
+                </div>
             </div>
 
             {!isEditing && isAdmin && (
-                <div className="mb-6">
+                <div className="mb-8">
                     <button
                         onClick={() => { resetForm(); setIsEditing(true); }}
-                        className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-orange-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2"
+                        className="group px-8 py-4 bg-gradient-to-r from-teal-400 via-cyan-500 to-teal-500 text-white rounded-2xl font-bold hover:from-teal-500 hover:via-cyan-600 hover:to-teal-600 transition-all duration-300 shadow-xl shadow-teal-200 hover:shadow-2xl hover:shadow-teal-300 hover:-translate-y-1 active:translate-y-0 flex items-center gap-3">
                     >
-                        <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-                        Add News
+                        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+                        </div>
+                        <span className="text-lg">Create New Article</span>
+                        <ArrowUpRight className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
                     </button>
                 </div>
             )}
@@ -186,7 +231,7 @@ export default function NewsManagementPage() {
                                 type="text"
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none"
                                 placeholder="Enter a catchy headline for your news..."
                                 required
                             />
@@ -199,7 +244,7 @@ export default function NewsManagementPage() {
                                 <select
                                     value={formData.category}
                                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none">
                                 >
                                     <option value="General Announcement">General Announcement</option>
                                     <option value="Industry Update">Industry Update</option>
@@ -216,7 +261,7 @@ export default function NewsManagementPage() {
                                     type="date"
                                     value={formData.publishDate}
                                     onChange={(e) => setFormData({ ...formData, publishDate: e.target.value })}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none"
                                 />
                             </div>
                         </div>
@@ -228,7 +273,7 @@ export default function NewsManagementPage() {
                                 type="text"
                                 value={formData.source}
                                 onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none"
                                 placeholder="e.g. BBC Reuters..."
                             />
                         </div>
@@ -241,7 +286,7 @@ export default function NewsManagementPage() {
                             <textarea
                                 value={formData.content}
                                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none min-h-[200px]"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none min-h-[200px]"
                                 placeholder="Write your news content here. You can use Markdown formatting."
                                 required
                             />
@@ -258,7 +303,7 @@ export default function NewsManagementPage() {
                             </button>
                             <button
                                 type="submit"
-                                className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-orange-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 justify-center group"
+                                className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-xl font-semibold hover:from-teal-500 hover:to-cyan-600 transition-all duration-300 shadow-md hover:shadow-teal-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 justify-center group">
                             >
                                 <Save className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
                                 {editingItem ? 'Update Article' : 'Publish Article'}
@@ -271,7 +316,7 @@ export default function NewsManagementPage() {
                 <>
                     {loading ? (
                         <div className="text-center py-20">
-                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-4"></div>
+                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-400 mb-4"></div>
                             <p className="text-gray-500">Loading latest news...</p>
                         </div>
                     ) : news.length === 0 ? (
@@ -287,7 +332,7 @@ export default function NewsManagementPage() {
                             {isAdmin && (
                                 <button
                                     onClick={() => { resetForm(); setIsEditing(true); }}
-                                    className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-orange-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 group"
+                                    className="px-6 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-xl font-semibold hover:from-teal-500 hover:to-cyan-600 transition-all duration-300 shadow-md hover:shadow-teal-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 group">
                                 >
                                     <span className="flex items-center gap-2">
                                         <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
@@ -297,83 +342,102 @@ export default function NewsManagementPage() {
                             )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-6">
-                            {news.map((item) => (
-                                <div key={item.id} className="bg-white rounded-2xl border border-gray-200 p-6 transition-all hover:shadow-md hover:border-orange-200 group">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getCategoryColor(item.category)}`}>
+                        <div>
+                            {/* All Articles Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {news.map((item, index) => (
+                                    <div 
+                                        key={item.id} 
+                                        className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-2xl hover:border-transparent hover:-translate-y-2"
+                                    >
+                                        {/* Gradient header */}
+                                        <div className={`h-2 bg-gradient-to-r ${getGradientBackground(index)}`}></div>
+                                        <div className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${getGradientBackground(index)} opacity-50`}></div>
+                                        
+                                        <div className="relative p-6">
+                                            {/* Category Badge */}
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${getCategoryColor(item.category)}`}>
+                                                    {getCategoryIcon(item.category)}
                                                     {item.category}
                                                 </span>
-                                                <span className="text-sm text-gray-500 flex items-center gap-1">
-                                                    <Calendar className="w-3.5 h-3.5" />
-                                                    {new Date(item.publishDate).toLocaleDateString()}
-                                                </span>
-                                                {item.source && (
-                                                    <span className="text-sm text-gray-400 flex items-center gap-1 border-l pl-3 border-gray-300">
-                                                        <Share2 className="w-3.5 h-3.5" />
-                                                        {item.source}
-                                                    </span>
-                                                )}
                                             </div>
 
-                                            <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-orange-700 transition-colors">
+                                            {/* Title */}
+                                            <h4 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-teal-600 transition-colors line-clamp-2 leading-tight">
                                                 {item.title}
-                                            </h3>
+                                            </h4>
 
-                                            <div className="text-gray-600 mb-4">
+                                            {/* Excerpt - Collapsed by default */}
+                                            <div className="mb-4">
                                                 {expandedNews === item.id ? (
-                                                    <div>
-                                                        <p className="whitespace-pre-wrap">{item.content}</p>
-                                                        <button 
-                                                            onClick={() => setExpandedNews(null)}
-                                                            className="text-orange-600 hover:text-orange-700 font-medium text-sm mt-2"
-                                                        >
-                                                            Show less
-                                                        </button>
+                                                    <div className="space-y-3">
+                                                        <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{item.content}</p>
                                                     </div>
                                                 ) : (
-                                                    <div>
-                                                        <p className="line-clamp-2">{item.content}</p>
-                                                        {item.content.length > 150 && (
-                                                            <button 
-                                                                onClick={() => setExpandedNews(item.id)}
-                                                                className="text-orange-600 hover:text-orange-700 font-medium text-sm mt-2"
-                                                            >
-                                                                Read more
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                    <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed">{item.content}</p>
                                                 )}
                                             </div>
 
-                                            <div className="flex items-center gap-2 text-sm text-gray-400">
-                                                <span>Posted by {item.author?.fullName || 'Admin'}</span>
+                                            {/* View Details Button */}
+                                            <button 
+                                                onClick={() => setExpandedNews(expandedNews === item.id ? null : item.id)}
+                                                className="w-full px-4 py-2.5 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-lg font-semibold hover:from-teal-500 hover:to-cyan-600 transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 flex items-center justify-center gap-2">
+                                                <Eye className="w-4 h-4" />
+                                                {expandedNews === item.id ? 'Hide Details' : 'View Details'}
+                                            </button>
+
+                                            {/* Meta Information */}
+                                            <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100">
+                                                <div className="flex flex-col gap-2 text-xs text-gray-500">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Calendar className="w-3.5 h-3.5" />
+                                                        {new Date(item.publishDate).toLocaleDateString('en-US', { 
+                                                            month: 'short', 
+                                                            day: 'numeric' 
+                                                        })}
+                                                    </span>
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Clock className="w-3.5 h-3.5" />
+                                                        {getReadingTime(item.content)} min read
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                                                        {(item.author?.fullName || 'Admin').charAt(0)}
+                                                    </div>
+                                                </div>
                                             </div>
+
+                                            {/* Admin Actions */}
+                                            {isAdmin && (
+                                                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                                                    <button
+                                                        onClick={() => handleEdit(item)}
+                                                        className="flex-1 p-2 bg-teal-50 text-teal-600 hover:bg-teal-100 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md border border-teal-100 flex items-center justify-center gap-1.5 text-sm font-semibold"
+                                                        title="Edit"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(item.id)}
+                                                        className="flex-1 p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md border border-red-100 flex items-center justify-center gap-1.5 text-sm font-semibold"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {isAdmin && (
-                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button
-                                                    onClick={() => handleEdit(item)}
-                                                    className="group p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md border border-blue-100"
-                                                    title="Edit"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(item.id)}
-                                                    className="group p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md border border-red-100"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        )}
+                                        {/* Hover Effect Overlay */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-teal-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     )}
                 </>
