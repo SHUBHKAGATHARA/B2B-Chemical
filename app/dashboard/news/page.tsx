@@ -199,7 +199,6 @@ export default function NewsManagementPage() {
                     <button
                         onClick={() => { resetForm(); setIsEditing(true); }}
                         className="group px-8 py-4 bg-gradient-to-r from-teal-400 via-cyan-500 to-teal-500 text-white rounded-2xl font-bold hover:from-teal-500 hover:via-cyan-600 hover:to-teal-600 transition-all duration-300 shadow-xl shadow-teal-200 hover:shadow-2xl hover:shadow-teal-300 hover:-translate-y-1 active:translate-y-0 flex items-center gap-3">
-                    >
                         <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
                             <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
                         </div>
@@ -245,7 +244,6 @@ export default function NewsManagementPage() {
                                     value={formData.category}
                                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none">
-                                >
                                     <option value="General Announcement">General Announcement</option>
                                     <option value="Industry Update">Industry Update</option>
                                     <option value="Product Launch">Product Launch</option>
@@ -304,7 +302,6 @@ export default function NewsManagementPage() {
                             <button
                                 type="submit"
                                 className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-xl font-semibold hover:from-teal-500 hover:to-cyan-600 transition-all duration-300 shadow-md hover:shadow-teal-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 justify-center group">
-                            >
                                 <Save className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
                                 {editingItem ? 'Update Article' : 'Publish Article'}
                             </button>
@@ -333,7 +330,6 @@ export default function NewsManagementPage() {
                                 <button
                                     onClick={() => { resetForm(); setIsEditing(true); }}
                                     className="px-6 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-xl font-semibold hover:from-teal-500 hover:to-cyan-600 transition-all duration-300 shadow-md hover:shadow-teal-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 group">
-                                >
                                     <span className="flex items-center gap-2">
                                         <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
                                         Create Article
