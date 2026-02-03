@@ -113,15 +113,26 @@ export default function DistributorsPage() {
                 if (!response.ok) {
                     const error = await response.json();
                     console.error('[Distributor Form] Error response:', error);
+                    
                     // Handle various error formats
                     let errorMessage = 'Failed to save distributor';
+                    
                     if (typeof error.error === 'string') {
                         errorMessage = error.error;
                     } else if (error.error?.message) {
                         errorMessage = error.error.message;
+                        
+                        // If there are validation details, show them
+                        if (error.error.details && Array.isArray(error.error.details)) {
+                            const validationErrors = error.error.details
+                                .map((err: any) => `${err.path?.[0] || 'Field'}: ${err.message}`)
+                                .join('\n');
+                            errorMessage = `Validation Error:\n${validationErrors}`;
+                        }
                     } else if (error.message) {
                         errorMessage = error.message;
                     }
+                    
                     throw new Error(errorMessage);
                 }
                 
@@ -161,11 +172,20 @@ export default function DistributorsPage() {
                     errorMessage = error.error;
                 } else if (error.error?.message) {
                     errorMessage = error.error.message;
+                    
+                    // Handle validation errors with details
+                    if (error.error.details && Array.isArray(error.error.details)) {
+                        const validationErrors = error.error.details
+                            .map((err: any) => `${err.path?.[0] || 'Field'}: ${err.message}`)
+                            .join('\n');
+                        errorMessage = `Validation Error:\n${validationErrors}`;
+                    }
                 }
             } else if (error?.message) {
                 errorMessage = error.message;
             }
             
+            console.error('[Distributor Form] Error message to display:', errorMessage);
             alert(errorMessage);
         } finally {
             setSubmitting(false);
