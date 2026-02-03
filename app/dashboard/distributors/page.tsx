@@ -113,13 +113,24 @@ export default function DistributorsPage() {
                 if (!response.ok) {
                     const error = await response.json();
                     console.error('[Distributor Form] Error response:', error);
-                    throw new Error(error.error || error.error?.message || 'Failed to save distributor');
+                    // Handle various error formats
+                    let errorMessage = 'Failed to save distributor';
+                    if (typeof error.error === 'string') {
+                        errorMessage = error.error;
+                    } else if (error.error?.message) {
+                        errorMessage = error.error.message;
+                    } else if (error.message) {
+                        errorMessage = error.message;
+                    }
+                    throw new Error(errorMessage);
                 }
                 
                 const result = await response.json();
                 console.log('[Distributor Form] Success response:', result);
                 
-                alert(`Distributor ${editingDistributor ? 'updated' : 'created'} successfully with logo!`);
+                // Success message
+                const successMsg = `Distributor ${editingDistributor ? 'updated' : 'created'} successfully${formData.logo ? ' with logo' : ''}!`;
+                alert(successMsg);
             } else {
                 console.log('[Distributor Form] No logo, sending as JSON');
                 // Send as JSON if no logo
@@ -137,7 +148,25 @@ export default function DistributorsPage() {
             loadDistributors();
         } catch (error: any) {
             console.error('[Distributor Form] Submit error:', error);
-            alert(error.message || 'Failed to save distributor. Please try again.');
+            
+            // Extract meaningful error message
+            let errorMessage = 'Failed to save distributor. Please try again.';
+            
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            } else if (error?.error) {
+                if (typeof error.error === 'string') {
+                    errorMessage = error.error;
+                } else if (error.error?.message) {
+                    errorMessage = error.error.message;
+                }
+            } else if (error?.message) {
+                errorMessage = error.message;
+            }
+            
+            alert(errorMessage);
         } finally {
             setSubmitting(false);
         }
