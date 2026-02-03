@@ -123,6 +123,9 @@ export const ErrorResponses = {
     notFound: (resource: string = 'Resource') =>
         errorResponse(ErrorCodes.NOT_FOUND, `${resource} not found`, 404),
 
+    badRequest: (message: string = 'Bad request') =>
+        errorResponse(ErrorCodes.INVALID_INPUT, message, 400),
+
     validation: (message: string, details?: any, field?: string) =>
         errorResponse(ErrorCodes.VALIDATION_ERROR, message, 400, details, field),
 

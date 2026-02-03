@@ -26,13 +26,33 @@ export async function uploadToCloudinary(
     file: File,
     folder: string = 'company-logos'
 ): Promise<CloudinaryUploadResult> {
+    console.log('[Cloudinary] Starting upload:', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        folder: folder
+    });
+    
     try {
+        // Check if Cloudinary is configured
+        if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+            console.error('[Cloudinary] Missing configuration:', {
+                hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
+                hasApiKey: !!process.env.CLOUDINARY_API_KEY,
+                hasApiSecret: !!process.env.CLOUDINARY_API_SECRET
+            });
+            throw new Error('Cloudinary configuration is missing');
+        }
+        
         // Convert file to buffer
+        console.log('[Cloudinary] Converting file to buffer...');
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
+        console.log('[Cloudinary] Buffer created, size:', buffer.length);
 
         // Convert buffer to base64
         const base64Image = `data:${file.type};base64,${buffer.toString('base64')}`;
+        console.log('[Cloudinary] Base64 conversion complete, uploading to Cloudinary...');
 
         // Upload to Cloudinary
         const result = await cloudinary.uploader.upload(base64Image, {
@@ -45,6 +65,13 @@ export async function uploadToCloudinary(
             ],
         });
 
+        console.log('[Cloudinary] Upload successful:', {
+            secure_url: result.secure_url,
+            public_id: result.public_id,
+            width: result.width,
+            height: result.height
+        });
+
         return {
             secure_url: result.secure_url,
             public_id: result.public_id,
@@ -55,7 +82,11 @@ export async function uploadToCloudinary(
         };
     } catch (error) {
         console.error('[Cloudinary] Upload failed:', error);
-        throw new Error('Failed to upload image to Cloudinary');
+        console.error('[Cloudinary] Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+        });
+        throw new Error(`Failed to upload image to Cloudinary: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 }
 

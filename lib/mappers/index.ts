@@ -97,6 +97,7 @@ export function toDistributorListItemDTO(
         id: distributor.id,
         companyName: distributor.companyName,
         email: distributor.email,
+        logoUrl: distributor.logoUrl,
         status: distributor.status,
         createdAt: distributor.createdAt.toISOString(),
         pdfCount: distributor._count?.pdfAssignments || 0,

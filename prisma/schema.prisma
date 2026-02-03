@@ -61,6 +61,7 @@ model Distributor {
   id          String   @id @default(cuid())
   companyName String
   email       String   @unique
+  logoUrl     String?  // Cloudinary URL for distributor logo
   status      Status   @default(ACTIVE)
   createdAt   DateTime @default(now())
 

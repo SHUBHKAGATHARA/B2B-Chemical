@@ -3,8 +3,8 @@
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, Building2, Mail, Key, X, ChevronRight, Eye } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Edit, Trash2, Search, Building2, Mail, Key, X, ChevronRight, Eye, Camera } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 
 export default function DistributorsPage() {
@@ -13,11 +13,15 @@ export default function DistributorsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingDistributor, setEditingDistributor] = useState<any>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [formData, setFormData] = useState({
         companyName: '',
         email: '',
         password: '',
         status: 'ACTIVE',
+        logo: null as File | null,
     });
 
     useEffect(() => {
@@ -26,10 +30,23 @@ export default function DistributorsPage() {
 
     const loadDistributors = async () => {
         try {
+            console.log('[Distributors Page] Loading distributors...');
             const response = await apiClient.getDistributors();
+            console.log('[Distributors Page] Loaded distributors:', response.data?.length, 'items');
+            
+            // Log distributors with logos
+            const withLogos = response.data?.filter((d: any) => d.logoUrl) || [];
+            console.log('[Distributors Page] Distributors with logos:', withLogos.length);
+            if (withLogos.length > 0) {
+                console.log('[Distributors Page] Logo URLs:', withLogos.map((d: any) => ({ 
+                    name: d.companyName, 
+                    logoUrl: d.logoUrl 
+                })));
+            }
+            
             setDistributors(response.data || []);
         } catch (error) {
-            console.error('Failed to load distributors');
+            console.error('[Distributors Page] Failed to load distributors:', error);
         } finally {
             setLoading(false);
         }
@@ -37,17 +54,92 @@ export default function DistributorsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (submitting) {
+            console.log('[Distributor Form] Already submitting, ignoring');
+            return;
+        }
+        
+        console.log('[Distributor Form] Submit started, formData:', {
+            companyName: formData.companyName,
+            email: formData.email,
+            hasLogo: !!formData.logo,
+            logoName: formData.logo?.name,
+            logoSize: formData.logo?.size,
+            logoType: formData.logo?.type
+        });
+        
+        setSubmitting(true);
+        
         try {
-            if (editingDistributor) {
-                await apiClient.updateDistributor(editingDistributor.id, formData);
+            // Create FormData if logo is present
+            if (formData.logo) {
+                console.log('[Distributor Form] Creating FormData with logo');
+                const formDataToSend = new FormData();
+                formDataToSend.append('companyName', formData.companyName);
+                formDataToSend.append('email', formData.email);
+                if (formData.password) formDataToSend.append('password', formData.password);
+                formDataToSend.append('status', formData.status);
+                formDataToSend.append('logo', formData.logo);
+                
+                // Log FormData contents
+                console.log('[Distributor Form] FormData contents:');
+                for (const [key, value] of formDataToSend.entries()) {
+                    console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
+                }
+
+                // Send as multipart/form-data
+                const url = editingDistributor
+                    ? `/api/distributors/${editingDistributor.id}`
+                    : '/api/distributors';
+                const method = editingDistributor ? 'PUT' : 'POST';
+
+                console.log('[Distributor Form] Sending request to:', url, 'method:', method);
+                
+                // Get auth token for Authorization header
+                const token = localStorage.getItem('token');
+                
+                const response = await fetch(url, {
+                    method,
+                    body: formDataToSend,
+                    credentials: 'include', // Include cookies
+                    headers: {
+                        ...(token && { 'Authorization': `Bearer ${token}` }),
+                    },
+                });
+
+                console.log('[Distributor Form] Response status:', response.status);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error('[Distributor Form] Error response:', error);
+                    throw new Error(error.error || error.error?.message || 'Failed to save distributor');
+                }
+                
+                const result = await response.json();
+                console.log('[Distributor Form] Success response:', result);
+                
+                alert(`Distributor ${editingDistributor ? 'updated' : 'created'} successfully with logo!`);
             } else {
-                await apiClient.createDistributor(formData);
+                console.log('[Distributor Form] No logo, sending as JSON');
+                // Send as JSON if no logo
+                if (editingDistributor) {
+                    await apiClient.updateDistributor(editingDistributor.id, formData);
+                    alert('Distributor updated successfully!');
+                } else {
+                    await apiClient.createDistributor(formData);
+                    alert('Distributor created successfully!');
+                }
             }
+            
             setShowModal(false);
             resetForm();
             loadDistributors();
         } catch (error: any) {
-            alert(error.message);
+            console.error('[Distributor Form] Submit error:', error);
+            alert(error.message || 'Failed to save distributor. Please try again.');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -68,7 +160,9 @@ export default function DistributorsPage() {
             email: distributor.email,
             password: '',
             status: distributor.status,
+            logo: null,
         });
+        setLogoPreview(distributor.logoUrl || null);
         setShowModal(true);
     };
 
@@ -78,8 +172,64 @@ export default function DistributorsPage() {
             email: '',
             password: '',
             status: 'ACTIVE',
+            logo: null,
         });
+        setLogoPreview(null);
         setEditingDistributor(null);
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        console.log('[Distributor Form] File selected:', file);
+        
+        if (!file) {
+            console.log('[Distributor Form] No file selected');
+            return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file');
+            console.error('[Distributor Form] Invalid file type:', file.type);
+            e.target.value = ''; // Reset input
+            return;
+        }
+        
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File size must be less than 5MB');
+            console.error('[Distributor Form] File too large:', file.size);
+            e.target.value = ''; // Reset input
+            return;
+        }
+        
+        console.log('[Distributor Form] File validation passed, setting file:', {
+            name: file.name,
+            size: file.size,
+            type: file.type
+        });
+        
+        // Use functional update to avoid stale closure issues
+        setFormData(prev => {
+            console.log('[Distributor Form] Updating formData with logo, prev state:', prev);
+            return { ...prev, logo: file };
+        });
+        
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setLogoPreview(reader.result as string);
+            console.log('[Distributor Form] Preview created successfully');
+        };
+        reader.onerror = () => {
+            console.error('[Distributor Form] Failed to read file');
+            alert('Failed to read file. Please try again.');
+        };
+        reader.readAsDataURL(file);
     };
 
     const filteredDistributors = distributors.filter(dist =>
@@ -161,11 +311,19 @@ export default function DistributorsPage() {
                                     <tr key={dist.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
-                                                    <span className="text-white font-semibold text-sm">
-                                                        {getInitials(dist.companyName)}
-                                                    </span>
-                                                </div>
+                                                {dist.logoUrl ? (
+                                                    <img
+                                                        src={dist.logoUrl}
+                                                        alt={dist.companyName}
+                                                        className="w-10 h-10 rounded-lg object-cover border border-gray-200"
+                                                    />
+                                                ) : (
+                                                    <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
+                                                        <span className="text-white font-semibold text-sm">
+                                                            {getInitials(dist.companyName)}
+                                                        </span>
+                                                    </div>
+                                                )}
                                                 <div>
                                                     <p className="font-semibold text-gray-900">{dist.companyName}</p>
                                                 </div>
@@ -235,13 +393,59 @@ export default function DistributorsPage() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            {/* Company Logo Preview */}
-                            <div className="flex justify-center mb-4">
-                                <div className="w-20 h-20 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center">
-                                    <span className="text-white font-bold text-2xl">
-                                        {formData.companyName ? getInitials(formData.companyName) : 'CO'}
-                                    </span>
+                            {/* Company Logo Upload */}
+                            <div className="flex flex-col items-center mb-4">
+                                <div className="relative group">
+                                    <div
+                                        onClick={() => {
+                                            console.log('[Distributor Form] Logo div clicked, triggering file input');
+                                            fileInputRef.current?.click();
+                                        }}
+                                        className="w-24 h-24 rounded-lg overflow-hidden bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center cursor-pointer"
+                                    >
+                                        {logoPreview ? (
+                                            <img
+                                                src={logoPreview}
+                                                alt="Logo preview"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <span className="text-white font-bold text-2xl">
+                                                {formData.companyName ? getInitials(formData.companyName) : 'CO'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {/* Upload Button Overlay */}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            console.log('[Distributor Form] Camera button clicked');
+                                            fileInputRef.current?.click();
+                                        }}
+                                        className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-lg flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Camera className="w-6 h-6 text-white" />
+                                    </button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleLogoChange}
+                                        className="hidden"
+                                    />
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        console.log('[Distributor Form] Upload button clicked');
+                                        fileInputRef.current?.click();
+                                    }}
+                                    className="mt-2 text-sm text-teal-600 hover:text-teal-700 font-medium"
+                                >
+                                    {logoPreview ? 'Change Logo' : 'Upload Logo'}
+                                </button>
+                                <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP (max 5MB)</p>
                             </div>
 
                             {/* Company Name */}
@@ -254,7 +458,7 @@ export default function DistributorsPage() {
                                     <input
                                         type="text"
                                         value={formData.companyName}
-                                        onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
                                         className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                                         placeholder="Enter company name"
                                         required
@@ -272,7 +476,7 @@ export default function DistributorsPage() {
                                     <input
                                         type="email"
                                         value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                                         className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                                         placeholder="company@example.com"
                                         required
@@ -290,7 +494,7 @@ export default function DistributorsPage() {
                                     <input
                                         type="password"
                                         value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                                         className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
                                         placeholder="••••••••••••••••"
                                         required={!editingDistributor}
@@ -308,7 +512,7 @@ export default function DistributorsPage() {
                                             name="status"
                                             value="ACTIVE"
                                             checked={formData.status === 'ACTIVE'}
-                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                                             className="w-4 h-4 text-green-500 focus:ring-green-500"
                                         />
                                         <span className="text-sm font-medium text-gray-700">Active</span>
@@ -319,7 +523,7 @@ export default function DistributorsPage() {
                                             name="status"
                                             value="INACTIVE"
                                             checked={formData.status === 'INACTIVE'}
-                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                                             className="w-4 h-4 text-gray-500 focus:ring-gray-500"
                                         />
                                         <span className="text-sm font-medium text-gray-700">Inactive</span>
@@ -332,15 +536,24 @@ export default function DistributorsPage() {
                                 <button
                                     type="button"
                                     onClick={() => { setShowModal(false); resetForm(); }}
-                                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                                    disabled={submitting}
+                                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-md hover:shadow-lg"
+                                    disabled={submitting}
+                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
-                                    {editingDistributor ? 'Update' : 'Create'}
+                                    {submitting ? (
+                                        <>
+                                            <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            <span>Saving...</span>
+                                        </>
+                                    ) : (
+                                        <span>{editingDistributor ? 'Update' : 'Create'}</span>
+                                    )}
                                 </button>
                             </div>
                         </form>

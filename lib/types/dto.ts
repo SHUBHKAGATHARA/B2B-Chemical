@@ -123,6 +123,7 @@ export interface DistributorListItemDTO {
     id: string;
     companyName: string;
     email: string;
+    logoUrl: string | null;
     status: Status;
     createdAt: string;
     pdfCount: number;
