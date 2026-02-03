@@ -1,5 +1,13 @@
 import { v2 as cloudinary } from 'cloudinary';
 
+// Log configuration status (masked for security)
+console.log('[Cloudinary Config] Environment check:', {
+    hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
+    hasApiKey: !!process.env.CLOUDINARY_API_KEY,
+    hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME?.substring(0, 3) + '***',
+});
+
 // Configure Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
