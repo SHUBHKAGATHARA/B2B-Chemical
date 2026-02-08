@@ -40,12 +40,15 @@ export class LoginException extends Error {
 }
 
 export async function authenticateLogin(params: { email: string; password: string }): Promise<LoginResult> {
+    console.log('[Auth Service] Starting authentication for:', params.email);
+    
     // Trim inputs before validation
     const trimmedParams = {
         email: params.email?.trim() || '',
         password: params.password?.trim() || '',
     };
 
+    console.log('[Auth Service] Validating input...');
     const parsed = loginSchema.safeParse(trimmedParams);
     if (!parsed.success) {
         const firstError = parsed.error.errors[0];
@@ -59,7 +62,9 @@ export async function authenticateLogin(params: { email: string; password: strin
 
     const { email, password } = parsed.data;
 
+    console.log('[Auth Service] Looking up user in database...');
     const user = await prisma.user.findUnique({ where: { email } });
+    console.log('[Auth Service] User found:', !!user);
     if (!user) {
         throw new LoginException('INVALID_CREDENTIALS', 'Invalid email or password', 401, 'email');
     }
@@ -68,20 +73,26 @@ export async function authenticateLogin(params: { email: string; password: strin
         throw new LoginException('ACCOUNT_INACTIVE', 'Account is inactive', 403);
     }
 
+    console.log('[Auth Service] Comparing password...');
     const passwordOk = await comparePassword(password, user.passwordHash);
+    console.log('[Auth Service] Password match:', passwordOk);
+    
     if (!passwordOk) {
         throw new LoginException('INVALID_CREDENTIALS', 'Invalid email or password', 401, 'password');
     }
 
+    console.log('[Auth Service] Generating JWT token...');
     const token = generateToken(user.id, user.email, user.role, user.fullName);
+    console.log('[Auth Service] Token generated successfully');
     const expiresAt = new Date(Date.now() + AUTH_COOKIE_MAX_AGE_SECONDS * 1000);
 
     // Update last login asynchronously (don't wait for it to complete)
     prisma.user.update({ 
         where: { id: user.id }, 
         data: { lastLogin: new Date() } 
-    }).catch((err: unknown) => console.error('Failed to update lastLogin:', err));
+    }).catch((err: unknown) => console.error('[Auth Service] Failed to update lastLogin:', err));
 
+    console.log('[Auth Service] Login successful for:', email);
     return {
         user: {
             id: user.id,

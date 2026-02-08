@@ -12,6 +12,7 @@ import {
     Beaker,
     LogOut,
     Settings,
+    Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
             links: [
                 { href: '/dashboard/pdfs', label: 'PDF Transfer', icon: FileText },
                 { href: '/dashboard/news', label: 'News Transfer', icon: Newspaper },
+                { href: '/dashboard/alerts', label: 'Alert Management', icon: Bell },
             ]
         },
         {

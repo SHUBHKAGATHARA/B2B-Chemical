@@ -41,13 +41,20 @@ model User {
   status                  Status    @default(ACTIVE)
   profilePicture          String?   // Cloudinary URL for profile picture
   notificationPreferences Json?     // {inApp, push, email, categories}
+  accountName             String    @default("")
+  phoneNumber             String    @default("")
+  address                 String    @default("")
+  website                 String?
+  location                String?
   createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
   lastLogin               DateTime?
 
   pdfUploads   PdfUpload[]
   logs         Log[]
   deviceTokens DeviceToken[]
   authoredNews News[]
+  refreshTokens RefreshToken[]
 
   @@index([email])
   @@index([status])
@@ -75,18 +82,21 @@ model Distributor {
 }
 
 model PdfUpload {
-  id                    String    @id @default(cuid())
+  id                    String       @id @default(cuid())
   fileName              String
   fileUrl               String
-  fileData              String?   @db.Text // Store PDF as base64 when blob storage unavailable
+  fileData              String?      @db.Text // Store PDF as base64 when blob storage unavailable
   uploadedByAdminId     String
   assignedDistributorId String?
-  assignedGroup         AssignType @default(SINGLE)
-  status                PdfStatus  @default(PENDING)
-  createdAt             DateTime   @default(now())
+  assignedGroup         AssignType   @default(SINGLE)
+  status                PdfStatus    @default(PENDING)
+  categoryId            String?
+  description           String?      @db.Text
+  createdAt             DateTime     @default(now())
 
   uploadedBy    User          @relation(fields: [uploadedByAdminId], references: [id], onDelete: Cascade)
   distributor   Distributor?  @relation(fields: [assignedDistributorId], references: [id], onDelete: SetNull)
+  category      PdfCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   notifications Notification[]
 
   @@index([uploadedByAdminId])
@@ -94,6 +104,7 @@ model PdfUpload {
   @@index([status])
   @@index([assignedGroup])
   @@index([createdAt])
+  @@index([categoryId])
   @@index([assignedDistributorId, assignedGroup])
   @@map("pdf_uploads")
 }
@@ -204,4 +215,58 @@ model PushNotificationLog {
   @@index([status])
   @@index([sentAt])
   @@map("push_notification_logs")
+}
+
+model PdfCategory {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?     @db.Text
+  createdAt   DateTime    @default(now())
+  
+  pdfUploads  PdfUpload[]
+
+  @@index([name])
+  @@map("pdf_categories")
+}
+
+enum AlertStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
+model Alert {
+  id           String       @id @default(cuid())
+  alertId      String       @unique @default(cuid())
+  title        String
+  message      String       @db.Text
+  imageUrl     String?
+  buttonText   String?
+  buttonAction String?      @db.Text
+  status       AlertStatus  @default(ACTIVE)
+  startDate    DateTime     @default(now())
+  endDate      DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([status, startDate, endDate])
+  @@map("alerts")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }

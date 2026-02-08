@@ -3,7 +3,12 @@ import type { NextRequest } from 'next/server';
 import { verifyToken } from './lib/auth/jwt';
 
 // strictly public routes
-const PUBLIC_ROUTES = ['/login', '/api/auth/login'];
+const PUBLIC_ROUTES = [
+    '/login',
+    '/api/auth/login',
+    '/api/pdf-categories',
+    '/api/alerts/active'
+];
 
 // CORS headers for mobile app support
 const CORS_HEADERS = {
@@ -34,14 +39,14 @@ function getTokenFromRequest(request: NextRequest): string | null {
     if (authHeader && authHeader.startsWith('Bearer ')) {
         return authHeader.substring(7); // Remove 'Bearer ' prefix
     }
-    
+
     // Fallback to cookie (for web apps)
     return request.cookies.get('auth_token')?.value || null;
 }
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
-    
+
     // Handle CORS preflight requests for mobile apps
     if (request.method === 'OPTIONS') {
         return new NextResponse(null, {
@@ -49,7 +54,7 @@ export async function middleware(request: NextRequest) {
             headers: CORS_HEADERS,
         });
     }
-    
+
     const token = getTokenFromRequest(request);
 
     console.log(`[Middleware] ${request.method} ${pathname} - Token: ${!!token}`);
@@ -74,12 +79,12 @@ export async function middleware(request: NextRequest) {
         // If it's an API route, return 401 JSON with CORS headers for mobile
         if (pathname.startsWith('/api')) {
             return createApiResponse(
-                { 
+                {
                     success: false,
-                    error: { 
-                        message: 'Unauthorized: Please login', 
-                        code: 'UNAUTHORIZED' 
-                    } 
+                    error: {
+                        message: 'Unauthorized: Please login',
+                        code: 'UNAUTHORIZED'
+                    }
                 },
                 401
             );
@@ -110,12 +115,12 @@ export async function middleware(request: NextRequest) {
         if (pathname.startsWith('/api')) {
             const isExpired = error.message?.includes('expired');
             return createApiResponse(
-                { 
+                {
                     success: false,
-                    error: { 
-                        message: isExpired ? 'Token has expired' : 'Invalid token', 
-                        code: isExpired ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN' 
-                    } 
+                    error: {
+                        message: isExpired ? 'Token has expired' : 'Invalid token',
+                        code: isExpired ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN'
+                    }
                 },
                 401
             );

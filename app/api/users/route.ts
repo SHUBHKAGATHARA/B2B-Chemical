@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { fullName, email, password, role, status } = validation.data;
+        const { fullName, email, password, role, status, accountName, phoneNumber, address, website, location } = validation.data;
 
         // Check if email already exists
         const existingUser = await prisma.user.findUnique({
@@ -127,6 +127,11 @@ export async function POST(request: NextRequest) {
                 passwordHash,
                 role,
                 status: status || 'ACTIVE',
+                accountName: accountName.trim(),
+                phoneNumber: phoneNumber.trim(),
+                address: address.trim(),
+                website: website?.trim() || null,
+                location: location?.trim() || null,
             },
         });
 

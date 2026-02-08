@@ -6,6 +6,11 @@ export const createUserSchema = z.object({
     password: z.string().min(6, 'Password must be at least 6 characters'),
     role: z.enum(['ADMIN', 'DISTRIBUTOR']),
     status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+    accountName: z.string().min(2, 'Account name must be at least 2 characters'),
+    phoneNumber: z.string().regex(/^\+?[0-9]{10,20}$/, 'Invalid phone number format'),
+    address: z.string().min(5, 'Address must be at least 5 characters'),
+    website: z.string().url('Invalid URL format').optional().or(z.literal('')),
+    location: z.string().optional().or(z.literal('')),
 });
 
 export const loginSchema = z.object({
@@ -19,6 +24,11 @@ export const updateUserSchema = z.object({
     password: z.string().min(6).optional().or(z.literal('')),
     role: z.enum(['ADMIN', 'DISTRIBUTOR']).optional(),
     status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+    accountName: z.string().min(2).optional(),
+    phoneNumber: z.string().regex(/^\+?[0-9]{10,20}$/, 'Invalid phone number format').optional(),
+    address: z.string().min(5).optional(),
+    website: z.string().url('Invalid URL format').optional().or(z.literal('')),
+    location: z.string().optional().or(z.literal('')),
 });
 
 export const createDistributorSchema = z.object({
@@ -37,6 +47,38 @@ export const updateDistributorSchema = z.object({
 export const uploadPdfSchema = z.object({
     assignedGroup: z.enum(['SINGLE', 'MULTIPLE', 'ALL']),
     distributorIds: z.array(z.string()).optional(),
+    categoryId: z.string().optional(),
+    description: z.string().optional(),
+});
+
+// PDF Category schemas
+export const createPdfCategorySchema = z.object({
+    name: z.string().min(2, 'Category name must be at least 2 characters'),
+    description: z.string().optional(),
+});
+
+export const updatePdfCategorySchema = z.object({
+    name: z.string().min(2).optional(),
+    description: z.string().optional(),
+});
+
+// Alert schemas
+export const createAlertSchema = z.object({
+    title: z.string().min(3, 'Title must be at least 3 characters').max(200),
+    message: z.string().min(10, 'Message must be at least 10 characters'),
+    imageUrl: z.string().optional().or(z.literal('')),
+    status: z.enum(['ACTIVE', 'INACTIVE', 'EXPIRED']).optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional().or(z.literal('')),
+});
+
+export const updateAlertSchema = z.object({
+    title: z.string().min(3).max(200).optional(),
+    message: z.string().min(10).optional(),
+    imageUrl: z.string().optional().or(z.literal('')),
+    status: z.enum(['ACTIVE', 'INACTIVE', 'EXPIRED']).optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional().or(z.literal('')),
 });
 
 // Pagination and filtering schemas
@@ -79,4 +121,8 @@ export type UploadPdfInput = z.infer<typeof uploadPdfSchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;
 export type RegisterDeviceInput = z.infer<typeof registerDeviceSchema>;
 export type NotificationPreferencesInput = z.infer<typeof notificationPreferencesSchema>;
+export type CreatePdfCategoryInput = z.infer<typeof createPdfCategorySchema>;
+export type UpdatePdfCategoryInput = z.infer<typeof updatePdfCategorySchema>;
+export type CreateAlertInput = z.infer<typeof createAlertSchema>;
+export type UpdateAlertInput = z.infer<typeof updateAlertSchema>;
 

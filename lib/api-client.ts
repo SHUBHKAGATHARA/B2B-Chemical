@@ -58,6 +58,12 @@ class ApiClient {
             credentials: 'include', // Enable cookies for authentication
         });
 
+        console.log(`[API Client] Response from ${endpoint}:`, {
+            status: response.status,
+            ok: response.ok,
+            statusText: response.statusText,
+        });
+
         const data = await response.json();
 
         if (response.status === 401) {
@@ -94,22 +100,48 @@ class ApiClient {
 
     // Auth
     async login(email: string, password: string) {
-        const response = await this.request<any>('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password }),
-        });
+        console.log('[API Client] Attempting login for:', email);
+        
+        try {
+            const response = await this.request<any>('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ email, password }),
+            });
 
-        const data = response.success ? response.data : unwrapResponse(response);
+            console.log('[API Client] Login response received:', {
+                success: response.success,
+                hasData: !!response.data,
+                hasToken: !!response.data?.token,
+                hasUser: !!response.data?.user,
+            });
 
-        if (data.token) {
-            authStorage.setToken(data.token);
+            const data = response.success ? response.data : unwrapResponse(response);
+
+            if (!data) {
+                console.error('[API Client] No data in login response');
+                throw new Error('Invalid response from server');
+            }
+
+            if (data.token) {
+                console.log('[API Client] Storing token...');
+                authStorage.setToken(data.token);
+            } else {
+                console.warn('[API Client] No token in response');
+            }
+
+            if (data.user) {
+                console.log('[API Client] Storing user data:', data.user.email);
+                authStorage.setUser(data.user);
+            } else {
+                console.warn('[API Client] No user data in response');
+            }
+
+            console.log('[API Client] Login successful');
+            return data;
+        } catch (error) {
+            console.error('[API Client] Login failed:', error);
+            throw error;
         }
-
-        if (data.user) {
-            authStorage.setUser(data.user);
-        }
-
-        return data;
     }
 
     async logout() {

@@ -10,6 +10,7 @@ async function main() {
     await prisma.notification.deleteMany();
     await prisma.log.deleteMany();
     await prisma.pdfUpload.deleteMany();
+    await prisma.pdfCategory.deleteMany();
     await prisma.distributor.deleteMany();
     await prisma.user.deleteMany();
 
@@ -86,6 +87,51 @@ async function main() {
 
     console.log('✅ Created 3 Distributors');
 
+    // Create PDF Categories
+    const categoryTechnical = await prisma.pdfCategory.create({
+        data: {
+            name: 'Technical Documentation',
+            description: 'Technical specifications, manuals, and documentation',
+        },
+    });
+
+    const categoryReports = await prisma.pdfCategory.create({
+        data: {
+            name: 'Reports & Analysis',
+            description: 'Business reports, analytics, and performance reviews',
+        },
+    });
+
+    const categoryCatalogs = await prisma.pdfCategory.create({
+        data: {
+            name: 'Product Catalogs',
+            description: 'Product catalogs, brochures, and marketing materials',
+        },
+    });
+
+    const categoryContracts = await prisma.pdfCategory.create({
+        data: {
+            name: 'Contracts & Legal',
+            description: 'Contracts, agreements, and legal documents',
+        },
+    });
+
+    const categoryInvoices = await prisma.pdfCategory.create({
+        data: {
+            name: 'Invoices & Billing',
+            description: 'Invoices, receipts, and billing statements',
+        },
+    });
+
+    const categoryTraining = await prisma.pdfCategory.create({
+        data: {
+            name: 'Training Materials',
+            description: 'Training guides, tutorials, and educational content',
+        },
+    });
+
+    console.log('✅ Created 6 PDF Categories');
+
     // Create 2 Sample PDF Uploads
     const pdf1 = await prisma.pdfUpload.create({
         data: {
@@ -95,6 +141,8 @@ async function main() {
             assignedDistributorId: dist1.id,
             assignedGroup: 'SINGLE',
             status: 'DONE',
+            categoryId: categoryCatalogs.id,
+            description: '2024 Product catalog with latest offerings',
         },
     });
 
@@ -105,6 +153,8 @@ async function main() {
             uploadedByAdminId: admin.id,
             assignedGroup: 'ALL',
             status: 'PENDING',
+            categoryId: categoryReports.id,
+            description: 'Monthly performance report for January 2026',
         },
     });
 

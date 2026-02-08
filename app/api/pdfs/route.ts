@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
             where.createdAt = dateRange;
         }
 
-        // Execute query with minimal joins
+        // Execute query with complete data for dashboard
         const [pdfs, total] = await Promise.all([
             prisma.pdfUpload.findMany({
                 where,
@@ -105,17 +105,28 @@ export async function GET(request: NextRequest) {
                 select: {
                     id: true,
                     fileName: true,
+                    fileSize: true,
                     assignedGroup: true,
                     status: true,
                     createdAt: true,
+                    categoryId: true,
                     uploadedBy: {
                         select: {
+                            id: true,
                             fullName: true,
+                            email: true,
                         },
                     },
                     distributor: {
                         select: {
+                            id: true,
                             companyName: true,
+                        },
+                    },
+                    category: {
+                        select: {
+                            id: true,
+                            name: true,
                         },
                     },
                 },
@@ -124,8 +135,29 @@ export async function GET(request: NextRequest) {
             prisma.pdfUpload.count({ where }),
         ]);
 
-        // Map to DTOs (lightweight for mobile)
-        const pdfDTOs = pdfs.map((pdf) => toPdfListItemDTO(pdf as any));
+        // Return enhanced data for dashboard
+        const pdfDTOs = pdfs.map((pdf) => ({
+            id: pdf.id,
+            fileName: pdf.fileName,
+            fileSize: pdf.fileSize,
+            assignedGroup: pdf.assignedGroup,
+            status: pdf.status,
+            createdAt: pdf.createdAt.toISOString(),
+            categoryId: pdf.categoryId,
+            category: pdf.category ? {
+                id: pdf.category.id,
+                name: pdf.category.name,
+            } : null,
+            uploadedBy: {
+                id: pdf.uploadedBy.id,
+                fullName: pdf.uploadedBy.fullName,
+                email: pdf.uploadedBy.email,
+            },
+            distributor: pdf.distributor ? {
+                id: pdf.distributor.id,
+                companyName: pdf.distributor.companyName,
+            } : null,
+        }));
 
         // Build pagination metadata
         const paginationMeta = buildPaginationMeta(page, limit, total);

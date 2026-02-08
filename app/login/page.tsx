@@ -21,30 +21,52 @@ export default function LoginPage() {
         try {
             const trimmedEmail = email.trim();
             const trimmedPassword = password.trim();
-            
+
             if (!trimmedEmail || !trimmedPassword) {
                 throw new Error('Email and password are required');
             }
-            
+
             if (trimmedPassword.length < 6) {
                 throw new Error('Password must be at least 6 characters');
             }
 
             await apiClient.login(trimmedEmail, trimmedPassword);
-            
+
             // Wait a bit longer for the cookie to be properly set by the browser
             // This helps prevent "Session Expired" errors due to race conditions
             await new Promise(resolve => setTimeout(resolve, 300));
-            
+
             // Use router.push with a full page reload to ensure cookies are read fresh
             window.location.href = '/dashboard';
         } catch (err: any) {
             console.error('Login failed:', err);
+            console.error('Error details:', {
+                message: err?.message,
+                error: err?.error,
+                response: err?.response,
+            });
+
+            // Extract error message from various possible formats
+            let errorMessage = 'An error occurred during login. Please try again.';
+            let errorDetails = '';
+
+            if (err?.error?.message) {
+                errorMessage = err.error.message;
+                errorDetails = err.error.details || '';
+            } else if (err?.message) {
+                errorMessage = err.message;
+            }
+
             // Don't show "Session expired" error during login attempt
-            let errorMessage = err?.message || err?.error?.message || 'An error occurred during login. Please try again.';
             if (errorMessage.toLowerCase().includes('session expired')) {
                 errorMessage = 'Login failed. Please try again.';
             }
+
+            // In development, show additional details
+            if (process.env.NODE_ENV === 'development' && errorDetails) {
+                errorMessage += `\n\nDetails: ${errorDetails}`;
+            }
+
             setError(errorMessage);
             setLoading(false);
         }
@@ -87,14 +109,14 @@ export default function LoginPage() {
                         <p className="text-xl text-emerald-100 mb-8 animate-slideInLeft max-w-lg mx-auto">
                             Streamline your chemical distribution network with our modern, secure platform
                         </p>
-                        
+
                         {/* Decorative tubes */}
                         <div className="flex gap-6 justify-center mt-12">
                             {[...Array(3)].map((_, i) => (
                                 <div
                                     key={i}
                                     className="animate-float backdrop-blur-sm bg-white bg-opacity-15 rounded-full border border-white border-opacity-20"
-                                    style={{ 
+                                    style={{
                                         width: '70px',
                                         height: `${100 + i * 30}px`,
                                         animationDelay: `${i * 0.5}s`,
@@ -167,7 +189,7 @@ export default function LoginPage() {
                                             </svg>
                                         </div>
                                         <div className="ml-3">
-                                            <p className="text-sm text-red-800">{error}</p>
+                                            <p className="text-sm text-red-800 whitespace-pre-line">{error}</p>
                                         </div>
                                     </div>
                                 </div>

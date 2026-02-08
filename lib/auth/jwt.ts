@@ -1,23 +1,40 @@
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
-import { jwtVerify } from 'jose';
+import { jwtVerify, SignJWT } from 'jose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production';
-const JWT_EXPIRES_IN = '7d'; // 7 days
+const ACCESS_TOKEN_EXPIRES_IN = '15m'; // 15 minutes
+const REFRESH_TOKEN_EXPIRES_IN = '15d'; // 15 days
 
 export interface JWTPayload {
     userId: string;
     email: string;
     role: string;
     fullName?: string;
+    type?: 'access' | 'refresh';
 }
 
 /**
- * Generate JWT token for authenticated user
+ * Generate Access Token (15 minutes)
+ */
+export function generateAccessToken(userId: string, email: string, role: string, fullName?: string): string {
+    const payload: JWTPayload = { userId, email, role, fullName, type: 'access' };
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+}
+
+/**
+ * Generate Refresh Token (15 days)
+ */
+export function generateRefreshToken(userId: string): string {
+    const payload = { userId, type: 'refresh' };
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+}
+
+/**
+ * Legacy token generation (for backwards compatibility)
  */
 export function generateToken(userId: string, email: string, role: string, fullName?: string): string {
-    const payload: JWTPayload = { userId, email, role, fullName };
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    return generateAccessToken(userId, email, role, fullName);
 }
 
 /**

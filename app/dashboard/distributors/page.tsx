@@ -4,7 +4,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Edit, Trash2, Search, Building2, Mail, Key, X, ChevronRight, Eye, Camera } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Building2, Mail, Key, X, ChevronRight, Eye, Camera, Filter } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 
 export default function DistributorsPage() {
@@ -13,6 +13,8 @@ export default function DistributorsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingDistributor, setEditingDistributor] = useState<any>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState<string>('ALL');
+    const [sortBy, setSortBy] = useState<string>('newest');
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -281,10 +283,32 @@ export default function DistributorsPage() {
         reader.readAsDataURL(file);
     };
 
-    const filteredDistributors = distributors.filter(dist =>
-        dist.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        dist.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredDistributors = distributors
+        .filter(dist => {
+            // Search filter
+            const matchesSearch = dist.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                dist.email.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            // Status filter
+            const matchesStatus = filterStatus === 'ALL' || dist.status === filterStatus;
+            
+            return matchesSearch && matchesStatus;
+        })
+        .sort((a, b) => {
+            // Sort logic
+            switch (sortBy) {
+                case 'newest':
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                case 'oldest':
+                    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                case 'name-asc':
+                    return a.companyName.localeCompare(b.companyName);
+                case 'name-desc':
+                    return b.companyName.localeCompare(a.companyName);
+                default:
+                    return 0;
+            }
+        });
 
     const getInitials = (name: string) => {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -309,26 +333,66 @@ export default function DistributorsPage() {
                 </p>
             </div>
 
-            {/* Search and Add */}
+            {/* Search, Filters and Add */}
             <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-                <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <input
-                            type="text"
-                            placeholder="Search by company name or email..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
-                        />
+                <div className="flex flex-col gap-4">
+                    {/* Search and Add Button Row */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1 relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                                type="text"
+                                placeholder="Search by company name or email..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                            />
+                        </div>
+                        <button
+                            onClick={() => { resetForm(); setShowModal(true); }}
+                            className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-orange-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 justify-center group whitespace-nowrap"
+                        >
+                            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+                            Add Distributor
+                        </button>
                     </div>
-                    <button
-                        onClick={() => { resetForm(); setShowModal(true); }}
-                        className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-orange-200 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2 justify-center group"
-                    >
-                        <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-                        Add Distributor
-                    </button>
+                    
+                    {/* Filters Row */}
+                    <div className="flex flex-wrap gap-3">
+                        <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-700">Filter:</span>
+                        </div>
+                        
+                        {/* Status Filter */}
+                        <select
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white"
+                        >
+                            <option value="ALL">All Status</option>
+                            <option value="ACTIVE">Active Only</option>
+                            <option value="INACTIVE">Inactive Only</option>
+                        </select>
+                        
+                        {/* Sort Filter */}
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white"
+                        >
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="name-asc">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                        </select>
+                        
+                        {/* Results Count */}
+                        <div className="ml-auto flex items-center gap-2 text-sm text-gray-600">
+                            <span className="font-medium text-orange-600">{filteredDistributors.length}</span>
+                            <span>of {distributors.length} distributors</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

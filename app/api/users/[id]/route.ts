@@ -67,6 +67,11 @@ export async function PUT(
         if (validation.data.email) data.email = validation.data.email;
         if (validation.data.role) data.role = validation.data.role;
         if (validation.data.status) data.status = validation.data.status;
+        if (validation.data.accountName) data.accountName = validation.data.accountName.trim();
+        if (validation.data.phoneNumber) data.phoneNumber = validation.data.phoneNumber.trim();
+        if (validation.data.address) data.address = validation.data.address.trim();
+        if (validation.data.website !== undefined) data.website = validation.data.website?.trim() || null;
+        if (validation.data.location !== undefined) data.location = validation.data.location?.trim() || null;
         if (validation.data.password && validation.data.password.trim() !== '') {
             data.passwordHash = await hashPassword(validation.data.password);
         }
