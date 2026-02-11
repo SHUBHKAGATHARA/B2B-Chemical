@@ -1,8 +1,5 @@
 'use client';
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
-
 import { useState, useEffect, useRef } from 'react';
 import { Upload, Download, FileText, Search, Filter, X, ChevronRight, Building2, Users, Trash } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
@@ -11,13 +8,19 @@ import { authStorage } from '@/lib/auth-storage';
 export default function PdfsPage() {
     const [pdfs, setPdfs] = useState<any[]>([]);
     const [distributors, setDistributors] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [categoriesLoading, setCategoriesLoading] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [distributorType, setDistributorType] = useState<'ALL' | 'SINGLE' | 'MULTIPLE'>('ALL');
     const [selectedDistributors, setSelectedDistributors] = useState<string[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string>('');
+    const [description, setDescription] = useState<string>('');
     const [uploading, setUploading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterCategory, setFilterCategory] = useState<string>('');
+    const [filterDistributor, setFilterDistributor] = useState<string>('');
     const [isAdmin, setIsAdmin] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,6 +33,25 @@ export default function PdfsPage() {
         loadData();
     }, []);
 
+    // Debug: Log categories whenever they change
+    useEffect(() => {
+        console.log('[PDF Page] Categories state updated:', categories.length, 'categories');
+        console.log('[PDF Page] Categories loading:', categoriesLoading);
+        if (categories.length > 0) {
+            console.log('[PDF Page] First 3 categories:', categories.slice(0, 3).map(c => c.name));
+            console.log('[PDF Page] Sample category IDs:', categories.slice(0, 3).map(c => ({ id: c.id, name: c.name })));
+        }
+    }, [categories, categoriesLoading]);
+
+    // Debug: Log filter changes
+    useEffect(() => {
+        if (filterCategory) {
+            console.log('[PDF Filter] Category filter changed to:', filterCategory);
+            console.log('[PDF Filter] Total PDFs:', pdfs.length);
+            console.log('[PDF Filter] Available categories:', categories.length);
+        }
+    }, [filterCategory]);
+
     const loadData = async () => {
         try {
             // Check user role
@@ -38,16 +60,32 @@ export default function PdfsPage() {
             
             // Distributors don't need the distributors list
             if (isAdminUser) {
-                const [pdfsData, distsData] = await Promise.all([
+                const [pdfsData, distsData, categoriesData] = await Promise.all([
                     apiClient.getPdfs(),
                     apiClient.getDistributors(),
+                    loadCategories(),
                 ]);
                 setPdfs(pdfsData.data || []);
                 setDistributors(distsData.data || []);
+                setCategories(categoriesData || []);
+                
+                // Debug: Log PDF category information
+                console.log('[PDF Page] Loaded', pdfsData.data?.length || 0, 'PDFs');
+                if (pdfsData.data && pdfsData.data.length > 0) {
+                    console.log('[PDF Page] Sample PDF categories:', pdfsData.data.slice(0, 3).map((p: any) => ({
+                        fileName: p.fileName,
+                        categoryId: p.categoryId,
+                        categoryName: p.category?.name
+                    })));
+                }
             } else {
-                // Distributors only need PDFs
-                const pdfsData = await apiClient.getPdfs();
+                // Distributors only need PDFs and categories
+                const [pdfsData, categoriesData] = await Promise.all([
+                    apiClient.getPdfs(),
+                    loadCategories(),
+                ]);
                 setPdfs(pdfsData.data || []);
+                setCategories(categoriesData || []);
             }
         } catch (error) {
             console.error('Failed to load data:', error);
@@ -56,9 +94,46 @@ export default function PdfsPage() {
         }
     };
 
+    const loadCategories = async (retryCount = 0): Promise<any[]> => {
+        const maxRetries = 3;
+        const retryDelay = 2000;
+
+        console.log('[PDF Categories] Starting to load categories...');
+        setCategoriesLoading(true);
+
+        try {
+            const categories = await apiClient.getPdfCategories();
+            console.log('[PDF Categories] Loaded categories:', categories.length);
+            if (categories.length > 0) {
+                console.log('[PDF Categories] First 3 categories:', categories.slice(0, 3).map((c: any) => c.name));
+            }
+            return categories;
+        } catch (error: any) {
+            console.error('[PDF Categories] Error loading categories:', error);
+            
+            if (error.message?.includes('connect') && retryCount < maxRetries) {
+                console.log('[PDF Categories] Retrying after error...', retryCount + 1);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                return loadCategories(retryCount + 1);
+            } else {
+                console.log('[PDF Categories] Failed to load, returning empty array');
+                return [];
+            }
+        } finally {
+            setCategoriesLoading(false);
+            console.log('[PDF Categories] Loading complete');
+        }
+    };
+
     const handleUpload = async (e: React.FormEvent | React.MouseEvent) => {
         e.preventDefault();
         if (!file) return;
+
+        // Validate category selection
+        if (!selectedCategory) {
+            alert('Please select a category for the PDF');
+            return;
+        }
 
         // Validation
         if (distributorType !== 'ALL' && selectedDistributors.length === 0) {
@@ -73,6 +148,12 @@ export default function PdfsPage() {
             formData.append('assignedGroup', distributorType);
             if (distributorType !== 'ALL') {
                 formData.append('distributorIds', JSON.stringify(selectedDistributors));
+            }
+            if (selectedCategory) {
+                formData.append('categoryId', selectedCategory);
+            }
+            if (description.trim()) {
+                formData.append('description', description.trim());
             }
 
             await apiClient.uploadPdf(formData);
@@ -89,6 +170,8 @@ export default function PdfsPage() {
         setFile(null);
         setDistributorType('ALL');
         setSelectedDistributors([]);
+        setSelectedCategory('');
+        setDescription('');
     };
 
     const handleDrag = (e: React.DragEvent) => {
@@ -116,10 +199,38 @@ export default function PdfsPage() {
         }
     };
 
-    const filteredPdfs = pdfs.filter(pdf =>
-        pdf.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        pdf.uploadedBy?.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredPdfs = pdfs.filter(pdf => {
+        // Search filter - enhanced to search in more fields
+        const matchesSearch = searchTerm === '' ||
+            pdf.fileName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            pdf.uploadedBy?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            pdf.uploadedBy?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            pdf.category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            pdf.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            pdf.distributor?.companyName?.toLowerCase().includes(searchTerm.toLowerCase());
+
+        // Category filter
+        const matchesCategory = filterCategory === '' || pdf.categoryId === filterCategory;
+        
+        // Debug logging for category filter
+        if (filterCategory && pdf.id) {
+            console.log(`[Filter Debug] PDF: ${pdf.fileName}, CategoryId: ${pdf.categoryId}, FilterCategory: ${filterCategory}, Matches: ${matchesCategory}`);
+        }
+
+        // Distributor filter (for admin view) - improved logic
+        let matchesDistributor = true;
+        if (isAdmin && filterDistributor) {
+            if (pdf.assignedGroup === 'ALL') {
+                // Always show 'ALL' assigned PDFs regardless of filter
+                matchesDistributor = true;
+            } else if (pdf.assignedGroup === 'SINGLE' || pdf.assignedGroup === 'MULTIPLE') {
+                // For SINGLE or MULTIPLE, check if the filtered distributor matches
+                matchesDistributor = pdf.distributor?.id === filterDistributor;
+            }
+        }
+
+        return matchesSearch && matchesCategory && matchesDistributor;
+    });
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this PDF? This action cannot be undone.')) {
@@ -203,8 +314,8 @@ export default function PdfsPage() {
 
             {/* Upload Area - Admin Only */}
             {isAdmin && (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 mb-6">
-                {!file ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-8 mb-6">
+                    {!file ? (
                     <div
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}
@@ -267,6 +378,61 @@ export default function PdfsPage() {
                     </div>
                 )}
 
+                {/* Category and Description - Show only when file is selected */}
+                {file && (
+                    <div className="space-y-4 mb-6">
+                        {/* Category Selection */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Select Category <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                required
+                                disabled={categoriesLoading}
+                            >
+                                <option value="">
+                                    {categoriesLoading ? 'Loading categories...' : categories.length === 0 ? 'No categories available' : 'Choose a category for this PDF'}
+                                </option>
+                                {categories.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                            {!categoriesLoading && categories.length > 0 && (
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Categorize your PDF for better organization ({categories.length} categories available)
+                                </p>
+                            )}
+                            {!categoriesLoading && categories.length === 0 && (
+                                <p className="mt-1 text-xs text-red-500">
+                                    No categories found. Please contact administrator to create categories.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Description (Optional) */}
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Description <span className="text-gray-400 text-xs">(Optional)</span>
+                            </label>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                rows={3}
+                                placeholder="Add any additional notes or description for this PDF..."
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                                Provide context or important details about this document
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Distributor Settings Form */}
                 <div className="mt-8 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -275,39 +441,78 @@ export default function PdfsPage() {
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                 Select Distributor Type <span className="text-red-500">*</span>
                             </label>
-                            <select
-                                value={distributorType}
-                                onChange={(e: any) => {
-                                    setDistributorType(e.target.value);
-                                    setSelectedDistributors([]);
-                                }}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
-                            >
-                                <option value="ALL">All Distributors</option>
-                                <option value="SINGLE">Single Distributor</option>
-                                <option value="MULTIPLE">Multiple Distributors</option>
-                            </select>
-                            <p className="mt-1 text-xs text-gray-500">Choose how to assign this PDF to distributors</p>
+                            <div className="relative">
+                                <select
+                                    value={distributorType}
+                                    onChange={(e: any) => {
+                                        setDistributorType(e.target.value);
+                                        setSelectedDistributors([]);
+                                    }}
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all appearance-none bg-white"
+                                >
+                                    <option value="ALL">📢 All Distributors</option>
+                                    <option value="SINGLE">👤 Single Distributor</option>
+                                    <option value="MULTIPLE">👥 Multiple Distributors</option>
+                                </select>
+                                <Building2 className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                <svg
+                                    className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500">
+                                {distributorType === 'ALL' && '🌐 PDF will be available to all registered distributors'}
+                                {distributorType === 'SINGLE' && '🎯 Select one specific distributor for this PDF'}
+                                {distributorType === 'MULTIPLE' && '✨ Choose multiple distributors to receive this PDF'}
+                            </p>
                         </div>
 
                         {/* Particular Distributor Selection */}
                         {distributorType !== 'ALL' && (
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Select Particular Distributor{distributorType === 'MULTIPLE' ? 's' : ''} <span className="text-red-500">*</span>
+                                    Select Distributor{distributorType === 'MULTIPLE' ? 's' : ''} <span className="text-red-500">*</span>
                                 </label>
-                                <div className="border border-gray-300 rounded-lg max-h-64 overflow-y-auto bg-white">
-                                    {distributors.length === 0 ? (
-                                        <div className="p-8 text-center text-gray-500">
-                                            <Building2 className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                                            <p>No distributors available</p>
-                                        </div>
-                                    ) : (
-                                        <div className="divide-y divide-gray-200">
+                                {distributors.length === 0 ? (
+                                    <div className="border border-gray-300 rounded-lg p-8 text-center text-gray-500">
+                                        <Building2 className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                                        <p>No distributors available</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {/* Select All / Clear All for Multiple Selection */}
+                                        {distributorType === 'MULTIPLE' && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedDistributors(distributors.map(d => d.id))}
+                                                    className="flex-1 px-3 py-2 text-xs font-medium text-teal-600 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors"
+                                                >
+                                                    Select All ({distributors.length})
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedDistributors([])}
+                                                    className="flex-1 px-3 py-2 text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                                                >
+                                                    Clear All
+                                                </button>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="border border-gray-300 rounded-lg max-h-64 overflow-y-auto bg-white shadow-sm">
                                             {distributors.map((dist) => (
                                                 <label
                                                     key={dist.id}
-                                                    className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                                                    className={`flex items-center gap-3 p-3 cursor-pointer transition-all border-b border-gray-100 last:border-b-0 ${
+                                                        selectedDistributors.includes(dist.id)
+                                                            ? 'bg-orange-50 hover:bg-orange-100'
+                                                            : 'hover:bg-gray-50'
+                                                    }`}
                                                 >
                                                     <input
                                                         type={distributorType === 'SINGLE' ? 'radio' : 'checkbox'}
@@ -324,24 +529,54 @@ export default function PdfsPage() {
                                                                 );
                                                             }
                                                         }}
-                                                        className="w-4 h-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded"
+                                                        className="w-4 h-4 text-orange-500 focus:ring-2 focus:ring-orange-500 border-gray-300 rounded transition-all"
                                                     />
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="font-medium text-gray-900 truncate">{dist.companyName}</p>
+                                                        <p className={`font-medium truncate ${
+                                                            selectedDistributors.includes(dist.id) ? 'text-orange-900' : 'text-gray-900'
+                                                        }`}>
+                                                            {dist.companyName}
+                                                        </p>
                                                         <p className="text-xs text-gray-500 truncate">{dist.email}</p>
                                                     </div>
                                                     {selectedDistributors.includes(dist.id) && (
-                                                        <div className="w-2 h-2 bg-orange-500 rounded-full flex-shrink-0"></div>
+                                                        <div className="flex items-center gap-1">
+                                                            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                                                            <span className="text-xs text-orange-600 font-medium">Selected</span>
+                                                        </div>
                                                     )}
                                                 </label>
                                             ))}
                                         </div>
-                                    )}
-                                </div>
-                                {selectedDistributors.length > 0 && (
-                                    <p className="mt-2 text-sm text-teal-600 font-medium">
-                                        {selectedDistributors.length} distributor{selectedDistributors.length > 1 ? 's' : ''} selected
-                                    </p>
+                                        {selectedDistributors.length > 0 && (
+                                            <div className="bg-teal-50 border border-teal-200 rounded-lg p-3">
+                                                <p className="text-sm text-teal-700 font-medium flex items-center gap-2">
+                                                    <Users className="w-4 h-4" />
+                                                    {selectedDistributors.length} distributor{selectedDistributors.length > 1 ? 's' : ''} selected
+                                                </p>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {selectedDistributors.map(id => {
+                                                        const dist = distributors.find(d => d.id === id);
+                                                        return dist ? (
+                                                            <span
+                                                                key={id}
+                                                                className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-teal-300 rounded text-xs text-teal-700"
+                                                            >
+                                                                {dist.companyName}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setSelectedDistributors(prev => prev.filter(did => did !== id))}
+                                                                    className="hover:text-red-600 transition-colors"
+                                                                >
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </span>
+                                                        ) : null;
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -367,7 +602,7 @@ export default function PdfsPage() {
                         </button>
                     </div>
                 </div>
-            </div>
+                </div>
             )}
 
             {/* Recent Transfers / My PDFs */}
@@ -375,6 +610,17 @@ export default function PdfsPage() {
                 <div className="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <h3 className="text-lg font-bold text-gray-900">{isAdmin ? 'RECENT TRANSFERS' : 'MY DOCUMENTS'}</h3>
+                        {filteredPdfs.length !== pdfs.length && (
+                            <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                                {filteredPdfs.length} of {pdfs.length} {filteredPdfs.length === 1 ? 'document' : 'documents'}
+                            </span>
+                        )}
+                        {(searchTerm || filterCategory || filterDistributor) && (
+                            <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded-full flex items-center gap-1">
+                                <Filter className="w-3 h-3" />
+                                {[searchTerm, filterCategory, filterDistributor].filter(Boolean).length} filter{[searchTerm, filterCategory, filterDistributor].filter(Boolean).length > 1 ? 's' : ''} active
+                            </span>
+                        )}
                         {selectedIds.size > 0 && isAdmin && (
                             <button
                                 onClick={handleBulkDelete}
@@ -385,15 +631,77 @@ export default function PdfsPage() {
                             </button>
                         )}
                     </div>
-                    <div className="relative">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search transfers..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full md:w-64"
-                        />
+                    <div className="flex flex-col md:flex-row gap-3">
+                        {/* Search */}
+                        <div className="relative">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search documents..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full md:w-56 transition-all"
+                            />
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Category Filter */}
+                        <div className="relative">
+                            <select
+                                value={filterCategory}
+                                onChange={(e) => setFilterCategory(e.target.value)}
+                                className="pl-4 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full md:w-44 appearance-none transition-all bg-white"
+                            >
+                                <option value="">All Categories</option>
+                                {categories.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <Filter className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        </div>
+
+                        {/* Distributor Filter (Admin Only) */}
+                        {isAdmin && (
+                            <div className="relative">
+                                <select
+                                    value={filterDistributor}
+                                    onChange={(e) => setFilterDistributor(e.target.value)}
+                                    className="pl-4 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full md:w-48 appearance-none transition-all bg-white"
+                                >
+                                    <option value="">All Distributors</option>
+                                    {distributors.map((dist) => (
+                                        <option key={dist.id} value={dist.id}>
+                                            {dist.companyName}
+                                        </option>
+                                    ))}
+                                </select>
+                                <Building2 className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            </div>
+                        )}
+
+                        {/* Clear Filters */}
+                        {(searchTerm || filterCategory || filterDistributor) && (
+                            <button
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setFilterCategory('');
+                                    setFilterDistributor('');
+                                }}
+                                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+                            >
+                                <X className="w-4 h-4" />
+                                Clear Filters
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -445,7 +753,17 @@ export default function PdfsPage() {
                                                 </div>
                                                 <div>
                                                     <p className="font-medium text-gray-900">{pdf.fileName}</p>
-                                                    <p className="text-sm text-gray-500">{(pdf.fileSize / 1024).toFixed(2)} KB</p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <p className="text-sm text-gray-500">{(pdf.fileSize / 1024).toFixed(2)} KB</p>
+                                                        {pdf.category && (
+                                                            <>
+                                                                <span className="text-gray-300">•</span>
+                                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                                    {pdf.category.name}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>

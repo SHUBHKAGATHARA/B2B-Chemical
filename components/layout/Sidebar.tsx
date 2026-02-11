@@ -12,6 +12,7 @@ import {
     Beaker,
     LogOut,
     Settings,
+    AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
             links: [
                 { href: '/dashboard/users', label: 'User Management', icon: Users },
                 { href: '/dashboard/distributors', label: 'Distributors', icon: Building2 },
+                { href: '/dashboard/alerts', label: 'Alerts Management', icon: AlertCircle },
             ]
         },
         {

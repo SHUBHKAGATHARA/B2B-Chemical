@@ -1,5 +1,6 @@
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import AlertsWrapper from '@/components/alerts/AlertsWrapper';
 import { getSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
@@ -34,6 +35,7 @@ export default async function DashboardLayout({
                 userAvatar={user?.profilePicture || undefined}
             />
             <main className="ml-64 pt-16 p-8">
+                <AlertsWrapper />
                 {children}
             </main>
         </div>

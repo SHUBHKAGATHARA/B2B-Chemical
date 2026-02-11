@@ -32,6 +32,12 @@ enum PdfStatus {
   DONE
 }
 
+enum AlertStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+}
+
 model User {
   id                      String    @id @default(cuid())
   fullName                String
@@ -48,6 +54,7 @@ model User {
   logs         Log[]
   deviceTokens DeviceToken[]
   authoredNews News[]
+  refreshTokens RefreshToken[]
 
   @@index([email])
   @@index([status])
@@ -83,10 +90,13 @@ model PdfUpload {
   assignedDistributorId String?
   assignedGroup         AssignType @default(SINGLE)
   status                PdfStatus  @default(PENDING)
+  categoryId            String?
+  description           String?
   createdAt             DateTime   @default(now())
 
   uploadedBy    User          @relation(fields: [uploadedByAdminId], references: [id], onDelete: Cascade)
   distributor   Distributor?  @relation(fields: [assignedDistributorId], references: [id], onDelete: SetNull)
+  category      PdfCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   notifications Notification[]
 
   @@index([uploadedByAdminId])
@@ -94,6 +104,7 @@ model PdfUpload {
   @@index([status])
   @@index([assignedGroup])
   @@index([createdAt])
+  @@index([categoryId])
   @@index([assignedDistributorId, assignedGroup])
   @@map("pdf_uploads")
 }
@@ -204,4 +215,52 @@ model PushNotificationLog {
   @@index([status])
   @@index([sentAt])
   @@map("push_notification_logs")
+}
+
+model Alert {
+  id           String      @id @default(cuid())
+  alertId      String      @unique
+  title        String
+  message      String
+  imageUrl     String?
+  buttonText   String?
+  buttonAction String?
+  status       AlertStatus @default(ACTIVE)
+  startDate    DateTime    @default(now())
+  endDate      DateTime?
+  createdAt    DateTime    @default(now())
+
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([status, startDate, endDate])
+  @@map("alerts")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model PdfCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  pdfUploads PdfUpload[]
+
+  @@index([name])
+  @@map("pdf_categories")
 }

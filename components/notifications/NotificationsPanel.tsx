@@ -202,7 +202,7 @@ export default function NotificationsPanel() {
                                                     </p>
                                                     <p className="text-sm text-gray-600 mt-1">
                                                         <span className="font-medium">
-                                                            {notification.pdf.uploadedBy.fullName}
+                                                            {notification.pdf.uploadedBy?.fullName || 'Unknown'}
                                                         </span>
                                                         {' '}uploaded{' '}
                                                         <span className="font-medium">

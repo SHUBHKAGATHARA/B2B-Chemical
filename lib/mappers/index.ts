@@ -190,7 +190,7 @@ export function toNotificationDTO(
             id: notification.pdf.id,
             fileName: notification.pdf.fileName,
             createdAt: notification.pdf.createdAt.toISOString(),
-            uploadedByName: notification.pdf.uploadedBy.fullName,
+            uploadedByName: notification.pdf.uploadedBy?.fullName || 'Unknown',
         },
     };
 }

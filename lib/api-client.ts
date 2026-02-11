@@ -236,6 +236,12 @@ class ApiClient {
         return this.request(`/pdfs/${id}`, { method: 'DELETE' });
     }
 
+    // PDF Categories
+    async getPdfCategories() {
+        const response = await this.request<ApiResponse<any>>('/pdf-categories');
+        return unwrapResponse(response);
+    }
+
     // Notifications
     async getNotifications(params?: Record<string, string>) {
         const response = await this.request<PaginatedResponse<any>>(

@@ -91,21 +91,28 @@ export async function POST(request: NextRequest) {
         }
 
         console.error('[Login] Unexpected error:', error.message || error);
+        console.error('[Login] Error type:', error.name);
+        console.error('[Login] Error code:', error.code);
         console.error('[Login] Error stack:', error.stack);
         
         // Identify specific error types for better debugging
-        let errorMessage = 'An error occurred during login.';
+        let errorMessage = 'Unable to complete login. Please try again.';
         let errorCode = 'INTERNAL_ERROR';
         
-        if (error.code === 'P1001' || error.message?.includes('connect')) {
-            errorMessage = 'Database connection failed. Please try again.';
+        // Database connection errors (Neon sleep mode)
+        if (error.name === 'PrismaClientInitializationError' || 
+            error.code === 'P1001' || 
+            error.message?.includes('Can\'t reach database') ||
+            error.message?.includes('connect ECONNREFUSED') ||
+            error.message?.includes('timed out')) {
+            errorMessage = 'Database is waking up. Please wait 5 seconds and try again.';
             errorCode = 'DB_CONNECTION_ERROR';
             console.error('[Login] DATABASE_URL configured:', !!process.env.DATABASE_URL);
         } else if (error.code === 'P2021' || error.message?.includes('table')) {
-            errorMessage = 'Database not properly set up.';
+            errorMessage = 'Database not properly configured. Please contact support.';
             errorCode = 'DB_SCHEMA_ERROR';
         } else if (error.message?.includes('JWT') || error.message?.includes('secret')) {
-            errorMessage = 'Authentication configuration error.';
+            errorMessage = 'Authentication system error. Please contact support.';
             errorCode = 'AUTH_CONFIG_ERROR';
             console.error('[Login] JWT_SECRET configured:', !!process.env.JWT_SECRET);
         }

@@ -12,8 +12,9 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    const [retryCount, setRetryCount] = useState(0);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent, isRetry = false) => {
         e.preventDefault();
         setError('');
         setLoading(true);
@@ -40,11 +41,33 @@ export default function LoginPage() {
             window.location.href = '/dashboard';
         } catch (err: any) {
             console.error('Login failed:', err);
+            
+            // Extract error message from various response formats
+            let errorMessage = err?.message || err?.error?.message || 'Unable to complete login. Please try again.';
+            
             // Don't show "Session expired" error during login attempt
-            let errorMessage = err?.message || err?.error?.message || 'An error occurred during login. Please try again.';
             if (errorMessage.toLowerCase().includes('session expired')) {
-                errorMessage = 'Login failed. Please try again.';
+                errorMessage = 'Login failed. Please check your credentials and try again.';
             }
+            
+            // Auto-retry for database connection errors (once)
+            if (!isRetry && retryCount < 1 && 
+                (errorMessage.includes('waking up') || 
+                 errorMessage.includes('Database is') ||
+                 errorMessage.includes('connection'))) {
+                setRetryCount(retryCount + 1);
+                setError('Database is waking up... automatically retrying in 5 seconds...');
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                return handleSubmit(e, true);
+            }
+            
+            // Make database connection errors more user-friendly
+            if (errorMessage.includes('waking up') || errorMessage.includes('Database is')) {
+                // Keep the helpful message from the backend
+            } else if (errorMessage.includes('500') || errorMessage.includes('Internal Server')) {
+                errorMessage = 'Server error. Please wait a moment and try again. If the problem persists, contact support.';
+            }
+            
             setError(errorMessage);
             setLoading(false);
         }
