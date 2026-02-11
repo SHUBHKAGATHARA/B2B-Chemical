@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
         const file = formData.get('file') as File | null;
         const assignedGroup = formData.get('assignedGroup') as AssignType;
         const distributorIdsStr = formData.get('distributorIds') as string;
+        const categoryId = formData.get('categoryId') as string | null;
+        const description = formData.get('description') as string | null;
 
         // Validate file
         if (!file) {
@@ -27,6 +29,11 @@ export async function POST(request: NextRequest) {
 
         if (!file.name.endsWith('.pdf')) {
             return NextResponse.json({ error: 'Only PDF files are allowed' }, { status: 400 });
+        }
+
+        // Validate category
+        if (!categoryId) {
+            return NextResponse.json({ error: 'Category is required' }, { status: 400 });
         }
 
         // Validate assignment type
@@ -66,10 +73,13 @@ export async function POST(request: NextRequest) {
                 data: {
                     fileName: file.name,
                     fileUrl: uploadedFile.filepath,
+                    fileSize: file.size,
                     fileData: uploadedFile.fileData || null, // Store base64 if database storage
                     uploadedByAdminId: session.userId,
                     assignedDistributorId: firstDistId,
                     assignedGroup,
+                    categoryId: categoryId,
+                    description: description || null,
                     status: 'PENDING',
                 },
             });

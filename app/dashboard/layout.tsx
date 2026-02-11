@@ -34,9 +34,11 @@ export default async function DashboardLayout({
                 userRole={session.role === 'ADMIN' ? 'Super Admin' : 'Distributor'}
                 userAvatar={user?.profilePicture || undefined}
             />
-            <main className="ml-64 pt-16 p-8">
-                <AlertsWrapper />
-                {children}
+            <main className="lg:ml-64 pt-16 p-4 sm:p-6 lg:p-8 transition-all duration-300 main-content">
+                <div className="max-w-[1600px] mx-auto">
+                    <AlertsWrapper />
+                    {children}
+                </div>
             </main>
         </div>
     );

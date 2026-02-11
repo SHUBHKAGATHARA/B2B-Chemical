@@ -33,17 +33,17 @@ export default function DistributorsPage() {
             console.log('[Distributors Page] Loading distributors...');
             const response = await apiClient.getDistributors();
             console.log('[Distributors Page] Loaded distributors:', response.data?.length, 'items');
-            
+
             // Log distributors with logos
             const withLogos = response.data?.filter((d: any) => d.logoUrl) || [];
             console.log('[Distributors Page] Distributors with logos:', withLogos.length);
             if (withLogos.length > 0) {
-                console.log('[Distributors Page] Logo URLs:', withLogos.map((d: any) => ({ 
-                    name: d.companyName, 
-                    logoUrl: d.logoUrl 
+                console.log('[Distributors Page] Logo URLs:', withLogos.map((d: any) => ({
+                    name: d.companyName,
+                    logoUrl: d.logoUrl
                 })));
             }
-            
+
             setDistributors(response.data || []);
         } catch (error) {
             console.error('[Distributors Page] Failed to load distributors:', error);
@@ -54,12 +54,12 @@ export default function DistributorsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (submitting) {
             console.log('[Distributor Form] Already submitting, ignoring');
             return;
         }
-        
+
         console.log('[Distributor Form] Submit started, formData:', {
             companyName: formData.companyName,
             email: formData.email,
@@ -68,9 +68,9 @@ export default function DistributorsPage() {
             logoSize: formData.logo?.size,
             logoType: formData.logo?.type
         });
-        
+
         setSubmitting(true);
-        
+
         try {
             // Create FormData if logo is present
             if (formData.logo) {
@@ -81,7 +81,7 @@ export default function DistributorsPage() {
                 if (formData.password) formDataToSend.append('password', formData.password);
                 formDataToSend.append('status', formData.status);
                 formDataToSend.append('logo', formData.logo);
-                
+
                 // Log FormData contents
                 console.log('[Distributor Form] FormData contents:');
                 for (const [key, value] of formDataToSend.entries()) {
@@ -95,10 +95,10 @@ export default function DistributorsPage() {
                 const method = editingDistributor ? 'PUT' : 'POST';
 
                 console.log('[Distributor Form] Sending request to:', url, 'method:', method);
-                
+
                 // Get auth token for Authorization header
                 const token = localStorage.getItem('token');
-                
+
                 const response = await fetch(url, {
                     method,
                     body: formDataToSend,
@@ -109,19 +109,19 @@ export default function DistributorsPage() {
                 });
 
                 console.log('[Distributor Form] Response status:', response.status);
-                
+
                 if (!response.ok) {
                     const error = await response.json();
                     console.error('[Distributor Form] Error response:', error);
-                    
+
                     // Handle various error formats
                     let errorMessage = 'Failed to save distributor';
-                    
+
                     if (typeof error.error === 'string') {
                         errorMessage = error.error;
                     } else if (error.error?.message) {
                         errorMessage = error.error.message;
-                        
+
                         // If there are validation details, show them
                         if (error.error.details && Array.isArray(error.error.details)) {
                             const validationErrors = error.error.details
@@ -132,13 +132,13 @@ export default function DistributorsPage() {
                     } else if (error.message) {
                         errorMessage = error.message;
                     }
-                    
+
                     throw new Error(errorMessage);
                 }
-                
+
                 const result = await response.json();
                 console.log('[Distributor Form] Success response:', result);
-                
+
                 // Success message
                 const successMsg = `Distributor ${editingDistributor ? 'updated' : 'created'} successfully${formData.logo ? ' with logo' : ''}!`;
                 alert(successMsg);
@@ -153,16 +153,16 @@ export default function DistributorsPage() {
                     alert('Distributor created successfully!');
                 }
             }
-            
+
             setShowModal(false);
             resetForm();
             loadDistributors();
         } catch (error: any) {
             console.error('[Distributor Form] Submit error:', error);
-            
+
             // Extract meaningful error message
             let errorMessage = 'Failed to save distributor. Please try again.';
-            
+
             if (error instanceof Error) {
                 errorMessage = error.message;
             } else if (typeof error === 'string') {
@@ -172,7 +172,7 @@ export default function DistributorsPage() {
                     errorMessage = error.error;
                 } else if (error.error?.message) {
                     errorMessage = error.error.message;
-                    
+
                     // Handle validation errors with details
                     if (error.error.details && Array.isArray(error.error.details)) {
                         const validationErrors = error.error.details
@@ -184,7 +184,7 @@ export default function DistributorsPage() {
             } else if (error?.message) {
                 errorMessage = error.message;
             }
-            
+
             console.error('[Distributor Form] Error message to display:', errorMessage);
             alert(errorMessage);
         } finally {
@@ -234,7 +234,7 @@ export default function DistributorsPage() {
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         console.log('[Distributor Form] File selected:', file);
-        
+
         if (!file) {
             console.log('[Distributor Form] No file selected');
             return;
@@ -247,7 +247,7 @@ export default function DistributorsPage() {
             e.target.value = ''; // Reset input
             return;
         }
-        
+
         // Validate file size (5MB)
         if (file.size > 5 * 1024 * 1024) {
             alert('File size must be less than 5MB');
@@ -255,19 +255,19 @@ export default function DistributorsPage() {
             e.target.value = ''; // Reset input
             return;
         }
-        
+
         console.log('[Distributor Form] File validation passed, setting file:', {
             name: file.name,
             size: file.size,
             type: file.type
         });
-        
+
         // Use functional update to avoid stale closure issues
         setFormData(prev => {
             console.log('[Distributor Form] Updating formData with logo, prev state:', prev);
             return { ...prev, logo: file };
         });
-        
+
         // Create preview
         const reader = new FileReader();
         reader.onloadend = () => {

@@ -25,17 +25,40 @@ export default function AlertBanner() {
     useEffect(() => {
         loadAlerts();
         loadDismissed();
+        
+        // Refresh alerts every 30 seconds
+        const interval = setInterval(() => {
+            console.log('[AlertBanner] Auto-refreshing alerts...');
+            loadAlerts();
+        }, 30000);
+        
+        // Also check when window regains focus
+        const handleFocus = () => {
+            console.log('[AlertBanner] Window focused, checking for new alerts...');
+            loadAlerts();
+        };
+        window.addEventListener('focus', handleFocus);
+        
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('focus', handleFocus);
+        };
     }, []);
 
     const loadAlerts = async () => {
         try {
+            console.log('[AlertBanner] Fetching active alerts...');
             const response = await fetch('/api/alerts/active');
             const data = await response.json();
+            console.log('[AlertBanner] API Response:', data);
             if (data.success && data.data) {
+                console.log('[AlertBanner] Loaded alerts:', data.data.length);
                 setAlerts(data.data);
+            } else {
+                console.warn('[AlertBanner] No alerts or unsuccessful response');
             }
         } catch (error) {
-            console.error('Failed to load alerts:', error);
+            console.error('[AlertBanner] Failed to load alerts:', error);
         } finally {
             setLoading(false);
         }
@@ -75,9 +98,17 @@ export default function AlertBanner() {
     // Filter out dismissed alerts
     const visibleAlerts = alerts.filter((alert) => !dismissed.has(alert.alertId));
 
-    if (loading || visibleAlerts.length === 0) {
+    if (loading) {
+        console.log('[AlertBanner] Still loading...');
         return null;
     }
+    
+    if (visibleAlerts.length === 0) {
+        console.log('[AlertBanner] No visible alerts (total:', alerts.length, ', dismissed:', dismissed.size, ')');
+        return null;
+    }
+    
+    console.log('[AlertBanner] Showing alert:', currentIndex + 1, 'of', visibleAlerts.length);
 
     const currentAlert = visibleAlerts[currentIndex];
 

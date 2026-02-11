@@ -78,9 +78,9 @@ export default function Sidebar({ userRole }: SidebarProps) {
     const sections = userRole === 'ADMIN' ? adminSections : distributorSections;
 
     return (
-        <aside className="w-64 bg-white border-r border-gray-200 min-h-screen fixed left-0 top-0 z-10 flex flex-col">
+        <aside className="w-64 bg-white border-r border-gray-200 min-h-screen fixed left-0 top-0 z-30 flex flex-col hidden lg:flex overflow-hidden">
             {/* Logo */}
-            <div className="h-16 flex items-center px-6 border-b border-gray-200">
+            <div className="h-16 flex items-center px-6 border-b border-gray-200 flex-shrink-0">
                 <Link href="/dashboard" className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center">
                         <Beaker className="w-6 h-6 text-white" strokeWidth={2.5} />
@@ -92,10 +92,10 @@ export default function Sidebar({ userRole }: SidebarProps) {
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-6 px-4">
+            <nav className="flex-1 overflow-y-auto py-6 px-4 scrollbar-thin">
                 {sections.map((section, sectionIndex) => (
                     <div key={sectionIndex} className={sectionIndex > 0 ? 'mt-8' : ''}>
-                        <h3 className="px-3 mb-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <h3 className="px-3 mb-3 text-xs font-bold text-gray-700 uppercase tracking-wider">
                             {section.title}
                         </h3>
                         <div className="space-y-1">
@@ -110,14 +110,14 @@ export default function Sidebar({ userRole }: SidebarProps) {
                                         className={cn(
                                             'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium group',
                                             isActive
-                                                ? 'bg-teal-50 text-teal-700'
-                                                : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                                                ? 'bg-teal-50 text-teal-700 font-semibold'
+                                                : 'text-gray-800 hover:bg-gray-100 hover:text-gray-900'
                                         )}
                                     >
                                         <Icon
                                             className={cn(
                                                 'w-5 h-5 flex-shrink-0',
-                                                isActive ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-600'
+                                                isActive ? 'text-teal-600' : 'text-gray-500 group-hover:text-gray-700'
                                             )}
                                             strokeWidth={2}
                                         />
@@ -131,7 +131,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
             </nav>
 
             {/* Support Section */}
-            <div className="p-4 border-t border-gray-200">
+            <div className="p-4 border-t border-gray-200 flex-shrink-0">
                 <div className="bg-orange-50 rounded-lg p-4 mb-3">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
@@ -142,12 +142,12 @@ export default function Sidebar({ userRole }: SidebarProps) {
                             <p className="text-xs text-gray-600">Online 24/7</p>
                         </div>
                     </div>
-                    <p className="text-xs text-gray-600 mb-3">Need Help?</p>
-                    <p className="text-xs text-gray-500">Check our docs or contact support.</p>
+                    <p className="text-xs text-gray-700 mb-3 font-medium">Need Help?</p>
+                    <p className="text-xs text-gray-600">Check our docs or contact support.</p>
                 </div>
 
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                    <LogOut className="w-5 h-5 text-gray-400" strokeWidth={2} />
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-800 hover:bg-red-50 hover:text-red-600 transition-colors border border-gray-200 hover:border-red-200">
+                    <LogOut className="w-5 h-5" strokeWidth={2} />
                     <span>Log Out</span>
                 </button>
             </div>

@@ -5,8 +5,11 @@ async function createTestAlert() {
     console.log('Creating test alert...\n');
 
     try {
+        const alertId = `ALERT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
         const alert = await prisma.alert.create({
             data: {
+                alertId,
                 title: 'Welcome to B2B Chemical Platform!',
                 message: 'This is a test alert to verify the alert system is working correctly. Alerts can include important announcements, promotions, or system updates.',
                 status: 'ACTIVE',

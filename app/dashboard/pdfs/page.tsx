@@ -209,12 +209,14 @@ export default function PdfsPage() {
             pdf.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             pdf.distributor?.companyName?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        // Category filter
-        const matchesCategory = filterCategory === '' || pdf.categoryId === filterCategory;
+        // Category filter - handle both string and number comparison
+        const matchesCategory = filterCategory === '' || 
+            pdf.categoryId === filterCategory || 
+            String(pdf.categoryId) === String(filterCategory);
         
         // Debug logging for category filter
         if (filterCategory && pdf.id) {
-            console.log(`[Filter Debug] PDF: ${pdf.fileName}, CategoryId: ${pdf.categoryId}, FilterCategory: ${filterCategory}, Matches: ${matchesCategory}`);
+            console.log(`[Filter Debug] PDF: ${pdf.fileName}, CategoryId: ${pdf.categoryId} (${typeof pdf.categoryId}), FilterCategory: ${filterCategory} (${typeof filterCategory}), Matches: ${matchesCategory}`);
         }
 
         // Distributor filter (for admin view) - improved logic
@@ -225,7 +227,8 @@ export default function PdfsPage() {
                 matchesDistributor = true;
             } else if (pdf.assignedGroup === 'SINGLE' || pdf.assignedGroup === 'MULTIPLE') {
                 // For SINGLE or MULTIPLE, check if the filtered distributor matches
-                matchesDistributor = pdf.distributor?.id === filterDistributor;
+                matchesDistributor = pdf.distributor?.id === filterDistributor ||
+                    String(pdf.distributor?.id) === String(filterDistributor);
             }
         }
 
@@ -657,7 +660,9 @@ export default function PdfsPage() {
                             <select
                                 value={filterCategory}
                                 onChange={(e) => setFilterCategory(e.target.value)}
-                                className="pl-4 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full md:w-44 appearance-none transition-all bg-white"
+                                className={`pl-4 pr-10 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full md:w-44 appearance-none transition-all bg-white ${
+                                    filterCategory ? 'border-orange-500 bg-orange-50 font-medium text-orange-900' : 'border-gray-300'
+                                }`}
                             >
                                 <option value="">All Categories</option>
                                 {categories.map((category) => (
@@ -666,7 +671,18 @@ export default function PdfsPage() {
                                     </option>
                                 ))}
                             </select>
-                            <Filter className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                            <Filter className={`w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none ${
+                                filterCategory ? 'text-orange-500' : 'text-gray-400'
+                            }`} />
+                            {filterCategory && (
+                                <button
+                                    onClick={() => setFilterCategory('')}
+                                    className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center hover:bg-orange-600 transition-colors shadow-sm"
+                                    title="Clear category filter"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            )}
                         </div>
 
                         {/* Distributor Filter (Admin Only) */}
@@ -675,7 +691,9 @@ export default function PdfsPage() {
                                 <select
                                     value={filterDistributor}
                                     onChange={(e) => setFilterDistributor(e.target.value)}
-                                    className="pl-4 pr-10 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full md:w-48 appearance-none transition-all bg-white"
+                                    className={`pl-4 pr-10 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full md:w-48 appearance-none transition-all bg-white ${
+                                        filterDistributor ? 'border-orange-500 bg-orange-50 font-medium text-orange-900' : 'border-gray-300'
+                                    }`}
                                 >
                                     <option value="">All Distributors</option>
                                     {distributors.map((dist) => (
@@ -684,7 +702,18 @@ export default function PdfsPage() {
                                         </option>
                                     ))}
                                 </select>
-                                <Building2 className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                <Building2 className={`w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none ${
+                                    filterDistributor ? 'text-orange-500' : 'text-gray-400'
+                                }`} />
+                                {filterDistributor && (
+                                    <button
+                                        onClick={() => setFilterDistributor('')}
+                                        className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center hover:bg-orange-600 transition-colors shadow-sm"
+                                        title="Clear distributor filter"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -817,8 +846,36 @@ export default function PdfsPage() {
                             </tbody>
                         </table>
                         {filteredPdfs.length === 0 && (
-                            <div className="p-12 text-center text-gray-500">
-                                No transfers found matching your search.
+                            <div className="p-12 text-center">
+                                <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                                    <FileText className="w-8 h-8 text-gray-400" />
+                                </div>
+                                {pdfs.length === 0 ? (
+                                    <>
+                                        <p className="text-gray-700 font-medium mb-1">No documents found</p>
+                                        <p className="text-sm text-gray-500">
+                                            {isAdmin ? 'Upload your first PDF to get started' : 'No PDFs have been assigned to you yet'}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-gray-700 font-medium mb-1">No documents match your filters</p>
+                                        <p className="text-sm text-gray-500 mb-4">
+                                            Try adjusting your search or filter criteria
+                                        </p>
+                                        <button
+                                            onClick={() => {
+                                                setSearchTerm('');
+                                                setFilterCategory('');
+                                                setFilterDistributor('');
+                                            }}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                                        >
+                                            <X className="w-4 h-4" />
+                                            Clear All Filters
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>

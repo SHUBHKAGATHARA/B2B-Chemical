@@ -21,11 +21,35 @@ export default function AlertPopup() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const [seen, setSeen] = useState<Set<string>>(new Set());
+    const [isNavigating, setIsNavigating] = useState(false);
 
     useEffect(() => {
         loadAlerts();
         loadSeen();
-    }, []);
+        
+        // Refresh alerts every 30 seconds to catch new ones
+        const interval = setInterval(() => {
+            // Only refresh if popup is closed
+            if (!isOpen) {
+                console.log('[AlertPopup] Auto-refreshing alerts...');
+                loadAlerts();
+            }
+        }, 30000);
+        
+        // Also check when window regains focus
+        const handleFocus = () => {
+            if (!isOpen) {
+                console.log('[AlertPopup] Window focused, checking for new alerts...');
+                loadAlerts();
+            }
+        };
+        window.addEventListener('focus', handleFocus);
+        
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('focus', handleFocus);
+        };
+    }, [isOpen]);
 
     const loadAlerts = async () => {
         try {
@@ -34,18 +58,25 @@ export default function AlertPopup() {
             console.log('[AlertPopup] API Response:', data);
             if (data.success && data.data) {
                 console.log('[AlertPopup] Total active alerts:', data.data.length);
+                
+                // Get current seen alerts from localStorage
+                const seenIds = getSeenAlertIds();
+                console.log('[AlertPopup] Currently seen alert IDs:', seenIds);
+                
                 const unseenAlerts = data.data.filter(
-                    (alert: Alert) => !isAlertSeen(alert.alertId)
+                    (alert: Alert) => !seenIds.includes(alert.alertId)
                 );
                 console.log('[AlertPopup] Unseen alerts:', unseenAlerts.length);
+                
                 setAlerts(unseenAlerts);
-                if (unseenAlerts.length > 0) {
+                if (unseenAlerts.length > 0 && !isOpen) {
                     console.log('[AlertPopup] Opening popup with', unseenAlerts.length, 'alerts');
                     setIsOpen(true);
+                    setCurrentIndex(0);
                 }
             }
         } catch (error) {
-            console.error('Failed to load alerts:', error);
+            console.error('[AlertPopup] Failed to load alerts:', error);
         }
     };
 
@@ -61,17 +92,16 @@ export default function AlertPopup() {
         }
     };
 
-    const isAlertSeen = (alertId: string): boolean => {
+    const getSeenAlertIds = (): string[] => {
         try {
             const stored = localStorage.getItem('seenAlertPopups');
             if (stored) {
-                const seenList = JSON.parse(stored);
-                return seenList.includes(alertId);
+                return JSON.parse(stored);
             }
         } catch (error) {
-            console.error('Failed to check seen alert:', error);
+            console.error('Failed to get seen alert IDs:', error);
         }
-        return false;
+        return [];
     };
 
     const markAsSeen = (alertId: string) => {
@@ -83,14 +113,19 @@ export default function AlertPopup() {
 
     const handleClose = () => {
         if (alerts[currentIndex]) {
-            markAsSeen(alerts[currentIndex].alertId);
+            const currentAlertId = alerts[currentIndex].alertId;
+            console.log('[AlertPopup] Marking alert as seen:', currentAlertId);
+            markAsSeen(currentAlertId);
         }
 
         // Show next alert or close popup
         if (currentIndex < alerts.length - 1) {
+            console.log('[AlertPopup] Moving to next alert:', currentIndex + 1, 'of', alerts.length);
             setCurrentIndex(currentIndex + 1);
         } else {
+            console.log('[AlertPopup] All alerts viewed, closing popup');
             setIsOpen(false);
+            setCurrentIndex(0);
         }
     };
 
@@ -139,18 +174,18 @@ export default function AlertPopup() {
 
                     {/* Actions */}
                     <div className="flex items-center justify-between gap-3">
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm font-medium text-gray-600">
                             {alerts.length > 1 && (
-                                <span>
+                                <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full">
                                     Alert {currentIndex + 1} of {alerts.length}
                                 </span>
                             )}
                         </div>
                         <button
                             onClick={handleClose}
-                            className="px-6 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all"
+                            className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-bold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl hover:scale-105"
                         >
-                            {currentIndex < alerts.length - 1 ? 'Next' : 'Close'}
+                            {currentIndex < alerts.length - 1 ? '➜ Next Alert' : '✓ Close'}
                         </button>
                     </div>
                 </div>

@@ -88,18 +88,18 @@ export default async function DashboardPage() {
         };
 
         return (
-            <div className="space-y-6 bg-pattern">
+            <div className="space-y-6">
                 {/* Header - Premium Style */}
-                <div className="animate-slideUp">
-                    <h2 className="text-3xl font-display font-bold text-charcoal-900 mb-2">Admin Dashboard</h2>
-                    <p className="text-charcoal-600">Welcome back! Here's what's happening with your B2B operations.</p>
+                <div className="animate-fadeIn">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+                    <p className="text-gray-600">Welcome back! Here's what's happening with your B2B operations.</p>
                 </div>
 
                 {/* Charts and Statistics */}
                 <DashboardCharts data={chartData} />
 
                 {/* Recent Activity - Premium Card */}
-                <div className="card-premium p-6 animate-slideUp" style={{ animationDelay: '0.15s' }}>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-fadeIn">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h3 className="text-xl font-display font-bold text-charcoal-900">Recent Activity</h3>
@@ -162,17 +162,18 @@ export default async function DashboardPage() {
         const doneCount = assignedPdfs.filter(pdf => pdf.status === 'DONE').length;
 
         return (
-            <div className="space-y-6 bg-pattern">
+            <div className="space-y-6">
                 {/* Header - Premium */}
-                <div className="animate-slideUp">
-                    <h2 className="text-3xl font-display font-bold text-charcoal-900 mb-2">
-                        Welcome, {distributor?.companyName || 'Distributor'}
-                    </h2>
-                    <p className="text-charcoal-600">Your document management dashboard</p>
+                <div className="animate-fadeIn bg-gradient-to-r from-teal-50 to-emerald-50 p-6 rounded-xl shadow-sm border border-teal-200">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                        <span className="text-4xl">👋</span>
+                        Welcome, {distributor?.companyName || 'Distributor'}!
+                    </h1>
+                    <p className="text-gray-700 font-medium">Your document management dashboard</p>
                 </div>
 
                 {/* Stats Grid for Distributor - Premium Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 animate-slideUp" style={{ animationDelay: '0.05s' }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 animate-fadeIn">
                     <div className="stat-card group">
                         <div className="stat-icon from-blue-500 to-cyan-500">
                             <FileText className="w-6 h-6 text-white" strokeWidth={2.5} />
@@ -213,37 +214,37 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* Assigned PDFs List - Premium Card */}
-                <div className="card-premium p-6 animate-slideUp" style={{ animationDelay: '0.1s' }}>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-fadeIn">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="text-xl font-display font-bold text-charcoal-900">Your Documents</h3>
-                            <p className="text-sm text-charcoal-600 mt-1">{assignedPdfs.length} assigned files</p>
+                            <h3 className="text-xl font-bold text-gray-900">Your Documents</h3>
+                            <p className="text-sm text-gray-700 mt-1 font-medium">{assignedPdfs.length} assigned files</p>
                         </div>
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <FileText className="w-5 h-5 text-blue-600" strokeWidth={2} />
+                        <div className="p-3 bg-blue-100 rounded-lg">
+                            <FileText className="w-6 h-6 text-blue-600" strokeWidth={2} />
                         </div>
                     </div>
                     {assignedPdfs.length === 0 ? (
                         <div className="text-center py-16">
-                            <div className="w-20 h-20 bg-charcoal-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <FileText className="w-10 h-10 text-charcoal-400" strokeWidth={1.5} />
+                            <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                <FileText className="w-10 h-10 text-gray-400" strokeWidth={1.5} />
                             </div>
-                            <p className="text-charcoal-600 text-lg font-medium">No documents assigned yet</p>
-                            <p className="text-charcoal-500 text-sm mt-2">Check back later for new assignments</p>
+                            <p className="text-gray-700 text-lg font-semibold">No documents assigned yet</p>
+                            <p className="text-gray-600 text-sm mt-2">Check back later for new assignments</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {assignedPdfs.map((pdf, index) => (
-                                <div key={pdf.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white rounded-lg border border-charcoal-200 hover:border-primary-300 hover:shadow-md transition-all duration-200 group gap-3">
+                                <div key={pdf.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-teal-300 hover:bg-white hover:shadow-md transition-all duration-200 group gap-3">
                                     <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary-100 to-teal-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
                                             <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" strokeWidth={2} />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm sm:text-base text-charcoal-900 truncate group-hover:text-primary-700 transition-colors">{pdf.fileName}</p>
-                                            <p className="text-xs sm:text-sm text-charcoal-600 mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
-                                                <span>by <span className="font-medium">{pdf.uploadedBy.fullName}</span></span>
-                                                <span className="text-charcoal-400 hidden sm:inline">•</span>
+                                            <p className="font-bold text-sm sm:text-base text-gray-900 truncate group-hover:text-teal-700 transition-colors">{pdf.fileName}</p>
+                                            <p className="text-xs sm:text-sm text-gray-700 mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
+                                                <span>by <span className="font-semibold">{pdf.uploadedBy.fullName}</span></span>
+                                                <span className="text-gray-400 hidden sm:inline">•</span>
                                                 <span className="w-full sm:w-auto">{new Date(pdf.createdAt).toLocaleDateString()}</span>
                                             </p>
                                         </div>
@@ -251,8 +252,8 @@ export default async function DashboardPage() {
                                     <a
                                         href={`/api/pdfs/${pdf.id}/download`}
                                         download
-                                        className="group/download relative overflow-hidden bg-gradient-to-r from-primary-600 to-teal-600 hover:from-primary-700 hover:to-teal-700 text-white px-4 py-2.5 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 flex-shrink-0 hover:scale-105 active:scale-95 justify-center sm:justify-start w-full sm:w-auto"
-                                    >
+                                        className="group/download relative overflow-hidden bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-5 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 flex-shrink-0 hover:scale-105 active:scale-95 justify-center sm:justify-start w-full sm:w-auto">
+                                    
                                         <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover/download:translate-x-[100%] transition-transform duration-700"></div>
                                         <Download className="w-4 h-4 relative z-10 group-hover/download:animate-bounce-subtle" />
                                         <span className="relative z-10">Download</span>
