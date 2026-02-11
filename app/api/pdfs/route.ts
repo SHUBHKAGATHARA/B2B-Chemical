@@ -105,7 +105,6 @@ export async function GET(request: NextRequest) {
                 select: {
                     id: true,
                     fileName: true,
-                    fileSize: true,
                     assignedGroup: true,
                     status: true,
                     createdAt: true,

@@ -73,7 +73,6 @@ export async function POST(request: NextRequest) {
                 data: {
                     fileName: file.name,
                     fileUrl: uploadedFile.filepath,
-                    fileSize: file.size,
                     fileData: uploadedFile.fileData || null, // Store base64 if database storage
                     uploadedByAdminId: session.userId,
                     assignedDistributorId: firstDistId,
