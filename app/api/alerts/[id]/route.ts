@@ -3,6 +3,9 @@ import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth/session';
 import { successResponse } from '@/lib/utils/api-response';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // PUT: Update alert (Admin only)
 export async function PUT(
     request: NextRequest,

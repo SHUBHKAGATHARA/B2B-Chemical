@@ -106,6 +106,7 @@ export async function GET(request: NextRequest) {
                     id: true,
                     fileName: true,
                     assignedGroup: true,
+                    assignedDistributorId: true,
                     status: true,
                     createdAt: true,
                     categoryId: true,

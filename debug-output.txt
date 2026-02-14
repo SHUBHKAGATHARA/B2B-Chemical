@@ -1,0 +1,78 @@
+🔍 Debugging PDF Filters...
+
+📁 Total Categories: 27
+1. Alerts (ID: cmlax5fet00017ukfn5a5fqjd)
+2. Certificate (ID: cmlayu79y0004gopb8vq5ef5q)
+3. Compliance (ID: cmlax5fsj00027ukfss7n5i14)
+4. Compliance Documents (ID: cmlf5xeso0002vdw06fnew0nf)
+5. Contracts (ID: cmlax5gja00047ukfz2cvp0ym)
+6. Contracts & Legal (ID: cmldrqwck0003cf0c700orcna)
+7. Delivery Note (ID: cmlayu5ua0001gopbsx6gmau4)
+8. General (ID: cmlax5hag00067ukfs7wbimxu)
+9. Installation Guides (ID: cmlf5xgo80004vdw0fjsi3sox)
+10. Invoice (ID: cmlax5ety00007ukf2weuanrz)
+11. Invoices & Billing (ID: cmldrqwpr0004cf0cy9pr828c)
+12. Maintenance Reports (ID: cmlf5xh1c0005vdw0jvkhdyfi)
+13. Marketing (ID: cmlax5gwv00057ukfza3r4nei)
+14. Marketing & Promotional (ID: cmldrqxub0007cf0cr13jt2ky)
+15. Product Catalog (ID: cmlayu6ar0002gopbf5s938y5)
+16. Product Catalogs (ID: cmldrqvxe0002cf0cd2koq3mj)
+17. Purchase Order (ID: cmlayu56y0000gopbkii373vv)
+18. Quality Certificates (ID: cmlf5xhdc0006vdw054vd2lzz)
+19. Reports (ID: cmlax5g5m00037ukfepznj2jd)
+20. Reports & Analysis (ID: cmldrqvhl0001cf0cs1iyjajf)
+21. Safety & Compliance (ID: cmldrqxfg0006cf0c11sb7yox)
+22. Safety Data Sheet (ID: cmlayu6sa0003gopb52polscy)
+23. Safety Data Sheets (ID: cmlf5xdvx0000vdw0wpko711w)
+24. Technical Documentation (ID: cmldrqutg0000cf0cj7c9vlch)
+25. Technical Specifications (ID: cmlf5xeg70001vdw02g1fjjuz)
+26. Training Materials (ID: cmldrqx2q0005cf0cn1drn1oa)
+27. User Manuals (ID: cmlf5xg120003vdw07b5l25xd)
+
+📄 Total PDFs: 7
+
+📋 Recent PDFs (showing first 10):
+
+1. 29122025122113PM.pdf
+   Category: Alerts (ID: cmlax5fet00017ukfn5a5fqjd)
+   Uploaded By: Shubham Kagathara
+   Assignment: SINGLE
+   Distributor: Premium Supplies Co
+
+2. Report (7).pdf
+   Category: None (ID: null)
+   Uploaded By: Shubham Kagathara
+   Assignment: ALL
+   Distributor: Tech Solutions Inc
+
+3. Jay Gadara (1).pdf
+   Category: None (ID: null)
+   Uploaded By: Shubham Kagathara
+   Assignment: MULTIPLE
+   Distributor: Global Traders Ltd
+
+4. 29122025122113PM.pdf
+   Category: None (ID: null)
+   Uploaded By: Shubham Kagathara
+   Assignment: ALL
+   Distributor: Tech Solutions Inc
+
+5. 29122025122113PM.pdf
+   Category: None (ID: null)
+   Uploaded By: Shubham Kagathara
+   Assignment: SINGLE
+   Distributor: Premium Supplies Co
+
+6. Monthly_Report_January.pdf
+   Category: None (ID: null)
+   Uploaded By: System Admin
+   Assignment: ALL
+   Distributor: N/A
+
+7. Product_Catalog_2024.pdf
+   Category: None (ID: null)
+   Uploaded By: System Admin
+   Assignment: SINGLE
+   Distributor: Tech Solutions Inc
+
+⚠️  PDFs without category: 6

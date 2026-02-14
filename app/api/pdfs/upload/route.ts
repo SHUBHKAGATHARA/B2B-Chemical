@@ -105,7 +105,33 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        return NextResponse.json({ pdf: result }, { status: 201 });
+        // Fetch the complete PDF with relations for the response
+        const completePdf = await prisma.pdfUpload.findUnique({
+            where: { id: result.id },
+            include: {
+                uploadedBy: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                    },
+                },
+                distributor: {
+                    select: {
+                        id: true,
+                        companyName: true,
+                    },
+                },
+                category: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
+        });
+
+        return NextResponse.json({ pdf: completePdf }, { status: 201 });
     } catch (error: any) {
         if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
             return NextResponse.json({ error: error.message }, { status: 403 });

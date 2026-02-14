@@ -4,6 +4,9 @@ import { prisma } from '@/lib/db';
 import { hashPassword } from '@/lib/auth/jwt';
 import { uploadToCloudinary, validateImageFile, deleteFromCloudinary, extractPublicId } from '@/lib/cloudinary';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/profile
  * Get current user's profile information
