@@ -148,10 +148,17 @@ export function toPdfUploadDTO(
 export function toPdfListItemDTO(
     pdf: PdfUpload & {
         uploadedBy: {
+            id: string;
             fullName: string;
+            email: string;
         };
         distributor?: {
+            id: string;
             companyName: string;
+        } | null;
+        category?: {
+            id: string;
+            name: string;
         } | null;
     }
 ): PdfListItemDTO {
@@ -161,8 +168,11 @@ export function toPdfListItemDTO(
         assignedGroup: pdf.assignedGroup,
         status: pdf.status,
         createdAt: pdf.createdAt.toISOString(),
-        uploadedByName: pdf.uploadedBy.fullName,
+        uploadedBy: pdf.uploadedBy,
         distributorName: pdf.distributor?.companyName || null,
+        distributor: pdf.distributor || null,
+        categoryId: pdf.categoryId,
+        category: pdf.category || null,
     };
 }
 

@@ -7,36 +7,20 @@ async function seedCategories() {
 
     const categories = [
         {
-            name: 'Safety Data Sheets',
-            description: 'Chemical safety information and hazard data'
+            name: 'MOU',
+            description: 'Memorandum of Understanding documents'
         },
         {
-            name: 'Technical Specifications',
-            description: 'Detailed technical specifications and product data'
+            name: 'Invoice',
+            description: 'Invoice and billing documents'
         },
         {
-            name: 'Product Catalogs',
-            description: 'Product catalogs and brochures'
+            name: 'Manifest',
+            description: 'Shipping manifests and delivery documents'
         },
         {
-            name: 'Compliance Documents',
-            description: 'Regulatory compliance and certification documents'
-        },
-        {
-            name: 'User Manuals',
-            description: 'Operation and user instruction manuals'
-        },
-        {
-            name: 'Installation Guides',
-            description: 'Installation and setup instructions'
-        },
-        {
-            name: 'Maintenance Reports',
-            description: 'Maintenance schedules and service reports'
-        },
-        {
-            name: 'Quality Certificates',
-            description: 'Quality assurance and test certificates'
+            name: 'Others',
+            description: 'Other miscellaneous documents'
         }
     ];
 

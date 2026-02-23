@@ -8,9 +8,6 @@ interface Alert {
     alertId: string;
     title: string;
     message: string;
-    imageUrl?: string | null;
-    buttonText?: string | null;
-    buttonAction?: string | null;
     status: string;
     startDate: string;
     endDate?: string | null;
@@ -21,10 +18,10 @@ export default function AlertPopup() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const [seen, setSeen] = useState<Set<string>>(new Set());
-    const [isNavigating, setIsNavigating] = useState(false);
-    const [imageError, setImageError] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
+        setIsMounted(true);
         loadAlerts();
         loadSeen();
 
@@ -78,26 +75,37 @@ export default function AlertPopup() {
                     return;
                 }
 
+                // Sort alerts by creation date (newest first)
+                const sortedAlerts = [...data.data].sort((a: Alert, b: Alert) => 
+                    new Date(b.id).getTime() - new Date(a.id).getTime()
+                );
+
                 // Get current seen alerts from localStorage
                 const seenIds = getSeenAlertIds();
                 console.log('[AlertPopup] Currently seen alert IDs:', seenIds);
 
-                const unseenAlerts = data.data.filter(
-                    (alert: Alert) => !seenIds.includes(alert.alertId)
+                // Check if there are new alerts that haven't been seen
+                const hasNewAlerts = sortedAlerts.some((alert: Alert) => !seenIds.includes(alert.alertId));
+                
+                // If there are new alerts, clear old seen alerts to show only the latest ones
+                if (hasNewAlerts && seenIds.length > 0) {
+                    console.log('[AlertPopup] New alerts detected, clearing old seen alerts');
+                    localStorage.removeItem('seenAlertPopups');
+                    setSeen(new Set());
+                }
+
+                // Get unseen alerts (all if we just cleared, or only new ones)
+                const currentSeenIds = hasNewAlerts && seenIds.length > 0 ? [] : seenIds;
+                const unseenAlerts = sortedAlerts.filter(
+                    (alert: Alert) => !currentSeenIds.includes(alert.alertId)
                 );
                 console.log('[AlertPopup] Unseen alerts:', unseenAlerts.length);
-
-                // Log if any alerts have images
-                unseenAlerts.forEach((alert: Alert) => {
-                    console.log(`[AlertPopup] Alert "${alert.title}" has image:`, !!alert.imageUrl, alert.imageUrl);
-                });
 
                 setAlerts(unseenAlerts);
                 if (unseenAlerts.length > 0 && !isOpen) {
                     console.log('[AlertPopup] Opening popup with', unseenAlerts.length, 'alerts');
                     setIsOpen(true);
                     setCurrentIndex(0);
-                    setImageError(false); // Reset image error state
                 } else if (unseenAlerts.length === 0) {
                     console.log('[AlertPopup] All alerts have been seen');
                 }
@@ -155,7 +163,6 @@ export default function AlertPopup() {
         if (currentIndex < alerts.length - 1) {
             console.log('[AlertPopup] Moving to next alert:', currentIndex + 1, 'of', alerts.length);
             setCurrentIndex(currentIndex + 1);
-            setImageError(false); // Reset image error for next alert
         } else {
             console.log('[AlertPopup] All alerts viewed, closing popup');
             setIsOpen(false);
@@ -163,19 +170,11 @@ export default function AlertPopup() {
         }
     };
 
-    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-        console.error('[AlertPopup] Failed to load image:', e.currentTarget.src);
-        console.error('[AlertPopup] Alert title:', alerts[currentIndex]?.title);
-        setImageError(true);
-    };
+    // Early return checks - ensure component is mounted
+    if (!isMounted) {
+        return null;
+    }
 
-    const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-        console.log('[AlertPopup] Image loaded successfully:', e.currentTarget.src);
-        console.log('[AlertPopup] Alert title:', alerts[currentIndex]?.title);
-        setImageError(false);
-    };
-
-    // Early return checks
     if (!isOpen) {
         console.log('[AlertPopup] Popup is closed');
         return null;
@@ -199,10 +198,6 @@ export default function AlertPopup() {
     }
 
     console.log('[AlertPopup] Rendering popup for alert:', currentAlert.title);
-    console.log('[AlertPopup] Has image:', !!currentAlert.imageUrl);
-    if (currentAlert.imageUrl) {
-        console.log('[AlertPopup] Image URL:', currentAlert.imageUrl);
-    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -223,30 +218,6 @@ export default function AlertPopup() {
 
                 {/* Content */}
                 <div className="p-6">
-                    {currentAlert.imageUrl && (
-                        <div className="mb-4 relative">
-                            {imageError ? (
-                                <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-                                    <div className="text-center">
-                                        <p className="text-gray-500 text-sm font-medium">Image failed to load</p>
-                                        <p className="text-gray-400 text-xs mt-1">URL: {currentAlert.imageUrl.substring(0, 50)}...</p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <img
-                                        src={currentAlert.imageUrl}
-                                        alt={currentAlert.title}
-                                        className="w-full h-48 object-cover rounded-lg"
-                                        onError={handleImageError}
-                                        onLoad={handleImageLoad}
-                                        loading="eager"
-                                    />
-                                </>
-                            )}
-                        </div>
-                    )}
-
                     <h4 className="text-xl font-bold text-gray-900 mb-3">
                         {currentAlert.title}
                     </h4>

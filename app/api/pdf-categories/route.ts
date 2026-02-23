@@ -28,14 +28,10 @@ export async function GET(request: NextRequest) {
             console.log('[PDF Categories API] No categories found, creating defaults...');
             
             const defaultCategories = [
-                { name: 'Technical Documentation', description: 'Technical specifications, manuals, and documentation' },
-                { name: 'Reports & Analysis', description: 'Business reports, analytics, and performance reviews' },
-                { name: 'Product Catalogs', description: 'Product catalogs, brochures, and marketing materials' },
-                { name: 'Contracts & Legal', description: 'Contracts, agreements, and legal documents' },
-                { name: 'Invoices & Billing', description: 'Invoices, receipts, and billing statements' },
-                { name: 'Training Materials', description: 'Training guides, tutorials, and educational content' },
-                { name: 'Safety & Compliance', description: 'Safety data sheets, compliance documents, and certifications' },
-                { name: 'Marketing & Promotional', description: 'Marketing materials, promotional content, and advertisements' },
+                { name: 'MOU', description: 'Memorandum of Understanding documents' },
+                { name: 'Invoice', description: 'Invoice and billing documents' },
+                { name: 'Manifest', description: 'Shipping manifests and delivery documents' },
+                { name: 'Others', description: 'Other miscellaneous documents' },
             ];
 
             // Create all categories

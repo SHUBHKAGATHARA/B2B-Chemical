@@ -22,6 +22,14 @@ export async function POST(request: NextRequest) {
         const categoryId = formData.get('categoryId') as string | null;
         const description = formData.get('description') as string | null;
 
+        console.log('[PDF Upload] Form data received:', {
+            fileName: file?.name,
+            assignedGroup,
+            categoryId,
+            description,
+            distributorIdsStr
+        });
+
         // Validate file
         if (!file) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -32,9 +40,22 @@ export async function POST(request: NextRequest) {
         }
 
         // Validate category
-        if (!categoryId) {
+        if (!categoryId || categoryId.trim() === '') {
+            console.error('[PDF Upload] Category is missing or empty');
             return NextResponse.json({ error: 'Category is required' }, { status: 400 });
         }
+
+        // Verify category exists
+        const categoryExists = await prisma.pdfCategory.findUnique({
+            where: { id: categoryId }
+        });
+
+        if (!categoryExists) {
+            console.error('[PDF Upload] Category not found:', categoryId);
+            return NextResponse.json({ error: 'Invalid category selected' }, { status: 400 });
+        }
+
+        console.log('[PDF Upload] Category validated:', categoryExists.name);
 
         // Validate assignment type
         if (!['SINGLE', 'MULTIPLE', 'ALL'].includes(assignedGroup)) {
@@ -77,11 +98,13 @@ export async function POST(request: NextRequest) {
                     uploadedByAdminId: session.userId,
                     assignedDistributorId: firstDistId,
                     assignedGroup,
-                    categoryId: categoryId,
+                    categoryId: categoryId.trim(),
                     description: description || null,
                     status: 'PENDING',
                 },
             });
+
+            console.log('[PDF Upload] PDF created with ID:', pdfUpload.id, 'categoryId:', pdfUpload.categoryId);
 
             // Create notifications for all targeted distributors
             if (targetDistributorIds.length > 0) {

@@ -163,8 +163,21 @@ export interface PdfListItemDTO {
     assignedGroup: AssignType;
     status: PdfStatus;
     createdAt: string;
-    uploadedByName: string;
+    uploadedBy: {
+        id: string;
+        fullName: string;
+        email: string;
+    };
     distributorName?: string | null;
+    distributor?: {
+        id: string;
+        companyName: string;
+    } | null;
+    categoryId: string | null;
+    category: {
+        id: string;
+        name: string;
+    } | null;
 }
 
 export interface PdfUploadResponseDTO {

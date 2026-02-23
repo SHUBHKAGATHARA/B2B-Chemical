@@ -18,9 +18,19 @@ export async function GET(request: NextRequest) {
                     { endDate: { gte: now } },
                 ],
             },
-            orderBy: {
-                createdAt: 'desc',
+            select: {
+                id: true,
+                alertId: true,
+                title: true,
+                message: true,
+                status: true,
+                startDate: true,
+                endDate: true,
             },
+            orderBy: [
+                { createdAt: 'desc' },
+                { id: 'desc' },
+            ],
         });
 
         return successResponse(alerts);

@@ -151,15 +151,22 @@ export default function PdfsPage() {
             }
             if (selectedCategory) {
                 formData.append('categoryId', selectedCategory);
+                console.log('[PDF Upload Form] Sending categoryId:', selectedCategory);
+            } else {
+                console.error('[PDF Upload Form] No category selected!');
             }
             if (description.trim()) {
                 formData.append('description', description.trim());
             }
 
-            await apiClient.uploadPdf(formData);
+            console.log('[PDF Upload Form] Uploading PDF with category:', selectedCategory);
+            const result = await apiClient.uploadPdf(formData);
+            console.log('[PDF Upload Form] Upload successful:', result);
+            
             resetForm();
             loadData();
         } catch (error: any) {
+            console.error('[PDF Upload Form] Upload failed:', error);
             alert(error.message || 'Upload failed');
         } finally {
             setUploading(false);
@@ -209,11 +216,17 @@ export default function PdfsPage() {
             pdf.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             pdf.distributor?.companyName?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        // Category filter - handle both string and number comparison
-        // Empty string or no filter means show all
-        const matchesCategory = !filterCategory || filterCategory === '' ||
-            pdf.categoryId === filterCategory ||
-            String(pdf.categoryId) === String(filterCategory);
+        // Category filter - improved comparison with proper null/undefined handling
+        let matchesCategory = true;
+        if (filterCategory && filterCategory !== '') {
+            // Check if PDF has a category assigned
+            if (!pdf.categoryId) {
+                matchesCategory = false;
+            } else {
+                // Compare as strings to handle different ID formats
+                matchesCategory = String(pdf.categoryId).trim() === String(filterCategory).trim();
+            }
+        }
 
         // Distributor filter (for admin view)
         let matchesDistributor = true;
@@ -224,8 +237,11 @@ export default function PdfsPage() {
                 matchesDistributor = true;
             } else if (pdf.assignedGroup === 'SINGLE') {
                 // For SINGLE assignment, check the assignedDistributorId
-                matchesDistributor = pdf.assignedDistributorId === filterDistributor ||
-                    String(pdf.assignedDistributorId) === String(filterDistributor);
+                if (!pdf.assignedDistributorId) {
+                    matchesDistributor = false;
+                } else {
+                    matchesDistributor = String(pdf.assignedDistributorId).trim() === String(filterDistributor).trim();
+                }
             } else if (pdf.assignedGroup === 'MULTIPLE') {
                 // For MULTIPLE, we need to check if the distributor has a notification for this PDF
                 // Since we don't have that data in the PDF object, we'll show all MULTIPLE assignments
@@ -237,19 +253,28 @@ export default function PdfsPage() {
         return matchesSearch && matchesCategory && matchesDistributor;
     });
 
-    // Debug logging
+    // Debug logging - Enhanced
     useEffect(() => {
         if (filterCategory) {
+            console.log('[Filter Debug] ==================');
             console.log('[Filter Debug] Active category filter:', filterCategory);
+            console.log('[Filter Debug] Filter type:', typeof filterCategory);
             console.log('[Filter Debug] Total PDFs:', pdfs.length);
             console.log('[Filter Debug] Filtered PDFs:', filteredPdfs.length);
-            console.log('[Filter Debug] Sample PDF categories:', pdfs.slice(0, 5).map(p => ({
-                fileName: p.fileName,
-                categoryId: p.categoryId,
-                categoryName: p.category?.name
-            })));
+            console.log('[Filter Debug] All PDF categories:');
+            pdfs.forEach((p, idx) => {
+                console.log(`  PDF ${idx + 1}: ${p.fileName}`);
+                console.log(`    - categoryId: ${p.categoryId} (${typeof p.categoryId})`);
+                console.log(`    - category name: ${p.category?.name || 'No category'}`);
+                console.log(`    - matches filter: ${p.categoryId && String(p.categoryId).trim() === String(filterCategory).trim()}`);
+            });
+            console.log('[Filter Debug] Available categories:');
+            categories.forEach(cat => {
+                console.log(`  - ${cat.name} (ID: ${cat.id})`);
+            });
+            console.log('[Filter Debug] ==================');
         }
-    }, [filterCategory, pdfs]);
+    }, [filterCategory, pdfs, filteredPdfs, categories]);
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this PDF? This action cannot be undone.')) {
@@ -673,16 +698,22 @@ export default function PdfsPage() {
                         <div className="relative">
                             <select
                                 value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value)}
+                                onChange={(e) => {
+                                    console.log('[Category Filter] Changed to:', e.target.value);
+                                    setFilterCategory(e.target.value);
+                                }}
                                 className={`pl-4 pr-10 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none w-full md:w-44 appearance-none transition-all bg-white ${filterCategory ? 'border-orange-500 bg-orange-50 font-medium text-orange-900' : 'border-gray-300'
                                     }`}
                             >
-                                <option value="">All Categories</option>
-                                {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>
-                                        {category.name}
-                                    </option>
-                                ))}
+                                <option value="">All Categories ({pdfs.length})</option>
+                                {categories.map((category) => {
+                                    const count = pdfs.filter(p => p.categoryId === category.id).length;
+                                    return (
+                                        <option key={category.id} value={category.id}>
+                                            {category.name} ({count})
+                                        </option>
+                                    );
+                                })}
                             </select>
                             <Filter className={`w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none ${filterCategory ? 'text-orange-500' : 'text-gray-400'
                                 }`} />
@@ -799,9 +830,13 @@ export default function PdfsPage() {
                                                                 <span className="text-gray-300">•</span>
                                                             </>
                                                         )}
-                                                        {pdf.category && (
-                                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                                                {pdf.category.name}
+                                                        {pdf.category ? (
+                                                            <span className="text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                                                                📁 {pdf.category.name}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-200">
+                                                                No category
                                                             </span>
                                                         )}
                                                     </div>
@@ -810,8 +845,12 @@ export default function PdfsPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-gray-900">{pdf.uploadedBy?.fullName || 'Unknown'}</span>
-                                                <span className="text-xs text-gray-500">{pdf.uploadedBy?.email}</span>
+                                                <span className="text-sm font-medium text-gray-900">
+                                                    {pdf.uploadedBy?.fullName || pdf.uploadedBy?.email || 'Admin User'}
+                                                </span>
+                                                {pdf.uploadedBy?.email && pdf.uploadedBy?.fullName && (
+                                                    <span className="text-xs text-gray-500">{pdf.uploadedBy.email}</span>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
@@ -873,7 +912,8 @@ export default function PdfsPage() {
                                     <>
                                         <p className="text-gray-700 font-medium mb-1">No documents match your filters</p>
                                         <p className="text-sm text-gray-500 mb-4">
-                                            Try adjusting your search or filter criteria
+                                            {filterCategory && `No PDFs found in the selected category "${categories.find(c => c.id === filterCategory)?.name}"`}
+                                            {!filterCategory && (searchTerm || filterDistributor) && 'Try adjusting your search or filter criteria'}
                                         </p>
                                         <button
                                             onClick={() => {
@@ -881,7 +921,7 @@ export default function PdfsPage() {
                                                 setFilterCategory('');
                                                 setFilterDistributor('');
                                             }}
-                                            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
                                         >
                                             <X className="w-4 h-4" />
                                             Clear All Filters
