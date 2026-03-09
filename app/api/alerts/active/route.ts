@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { successResponse } from '@/lib/utils/api-response';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 // GET: Get active public alerts (No auth required)
 export async function GET(request: NextRequest) {
     try {
@@ -33,7 +37,11 @@ export async function GET(request: NextRequest) {
             ],
         });
 
-        return successResponse(alerts);
+        const response = successResponse(alerts);
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        return response;
     } catch (error: any) {
         console.error('Error fetching active alerts:', error);
         return NextResponse.json(

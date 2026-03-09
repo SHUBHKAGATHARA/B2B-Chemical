@@ -5,6 +5,8 @@ import { successResponse } from '@/lib/utils/api-response';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 // PUT: Update alert (Admin only)
 export async function PUT(
@@ -71,7 +73,11 @@ export async function DELETE(
             where: { id: params.id },
         });
 
-        return successResponse({ message: 'Alert deleted successfully' });
+        const response = successResponse({ message: 'Alert deleted successfully' });
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        return response;
     } catch (error: any) {
         console.error('Error deleting alert:', error);
         

@@ -44,6 +44,7 @@ export default function AlertsPage() {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                cache: 'no-store',
             });
             const data = await response.json();
             if (data.success) {
@@ -81,6 +82,7 @@ export default function AlertsPage() {
                         Authorization: `Bearer ${token}`,
                     },
                     body: uploadFormData,
+                    cache: 'no-store',
                 });
 
                 const uploadData = await uploadResponse.json();
@@ -110,6 +112,7 @@ export default function AlertsPage() {
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(payload),
+                cache: 'no-store',
             });
 
             const data = await response.json();
@@ -139,6 +142,7 @@ export default function AlertsPage() {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
+                cache: 'no-store',
             });
 
             const data = await response.json();

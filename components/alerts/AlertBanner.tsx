@@ -48,7 +48,9 @@ export default function AlertBanner() {
     const loadAlerts = async () => {
         try {
             console.log('[AlertBanner] Fetching active alerts...');
-            const response = await fetch('/api/alerts/active');
+            const response = await fetch('/api/alerts/active', {
+                cache: 'no-store',
+            });
             const data = await response.json();
             console.log('[AlertBanner] API Response:', data);
             if (data.success && data.data) {

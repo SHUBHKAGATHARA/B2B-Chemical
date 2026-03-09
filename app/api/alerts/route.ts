@@ -5,6 +5,8 @@ import { successResponse } from '@/lib/utils/api-response';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 // GET: List all alerts (Admin only)
 export async function GET(request: NextRequest) {
@@ -23,7 +25,11 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        return successResponse(alerts);
+        const response = successResponse(alerts);
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        return response;
     } catch (error: any) {
         console.error('Error fetching alerts:', error);
         return NextResponse.json(
@@ -71,7 +77,11 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        return successResponse(alert, 201);
+        const response = successResponse(alert, 201);
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        return response;
     } catch (error: any) {
         console.error('Error creating alert:', error);
         return NextResponse.json(

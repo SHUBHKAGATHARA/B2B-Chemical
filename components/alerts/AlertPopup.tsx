@@ -52,7 +52,9 @@ export default function AlertPopup() {
     const loadAlerts = async () => {
         try {
             console.log('[AlertPopup] Fetching alerts from /api/alerts/active...');
-            const response = await fetch('/api/alerts/active');
+            const response = await fetch('/api/alerts/active', {
+                cache: 'no-store',
+            });
 
             if (!response.ok) {
                 console.error('[AlertPopup] API returned error status:', response.status, response.statusText);

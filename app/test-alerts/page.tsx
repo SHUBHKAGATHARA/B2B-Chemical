@@ -12,7 +12,9 @@ export default function TestAlertsPage() {
 
     const loadAlerts = async () => {
         try {
-            const response = await fetch('/api/alerts/active');
+            const response = await fetch('/api/alerts/active', {
+                cache: 'no-store',
+            });
             const data = await response.json();
             console.log('API Response:', data);
             setAlerts(data.data || []);
