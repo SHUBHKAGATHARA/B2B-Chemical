@@ -1,4 +1,4 @@
-﻿/* Trigger rebuild */
+/* Trigger rebuild */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -349,4 +349,92 @@
 .btn-lg {
   padding: 0.875rem 1.75rem;
   font-size: 1rem;
+}
+
+/* ============================================================
+   NEWSPRINT DESIGN SYSTEM — Guest Page Utilities
+   These styles are scoped to the guest landing experience.
+   Dashboard and auth styles above are untouched.
+   ============================================================ */
+
+/* Font family utilities */
+.font-serif-display { font-family: 'Playfair Display', 'Times New Roman', serif; }
+.font-body-serif    { font-family: 'Lora', Georgia, serif; }
+.font-mono-data     { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+
+/* Sharp corners — enforces zero radius on any element */
+.sharp-corners { border-radius: 0px !important; }
+
+/* Newsprint graph-paper texture overlay */
+.newsprint-texture {
+  position: relative;
+}
+.newsprint-texture::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(0deg, transparent 98%, rgba(0,0,0,0.025) 100%),
+    linear-gradient(90deg, transparent 98%, rgba(0,0,0,0.025) 100%);
+  background-size: 3px 3px;
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 0;
+}
+
+/* Dot-grid body background (applied to the newsprint guest page wrapper) */
+.newsprint-page {
+  background-color: #F9F9F7;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23111111' fill-opacity='0.04' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+/* Hard-offset shadow hover — "lifted newspaper cutout" effect */
+.hard-shadow-hover {
+  transition: box-shadow 0.2s ease-out, transform 0.2s ease-out;
+}
+.hard-shadow-hover:hover {
+  box-shadow: 4px 4px 0px 0px #111111;
+  transform: translate(-2px, -2px);
+}
+
+/* Breaking-news ticker marquee */
+@keyframes np-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-np-marquee {
+  animation: np-marquee 28s linear infinite;
+  display: flex;
+  width: max-content;
+}
+.animate-np-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Grayscale image — newsprint photo effect */
+.np-img-grayscale {
+  filter: grayscale(100%);
+  transition: filter 0.3s ease;
+}
+.np-img-grayscale:hover {
+  filter: grayscale(40%) sepia(30%);
+}
+
+/* Drop cap */
+.np-dropcap::first-letter {
+  font-family: 'Playfair Display', serif;
+  font-size: 4.5rem;
+  font-weight: 900;
+  line-height: 0.8;
+  float: left;
+  margin-right: 0.12em;
+  margin-top: 0.06em;
+  color: #111111;
+}
+
+/* Newsprint image placeholder halftone */
+.np-halftone {
+  background-image: radial-gradient(#111111 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.08;
 }

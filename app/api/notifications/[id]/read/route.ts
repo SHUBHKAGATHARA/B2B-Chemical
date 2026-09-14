@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { requireDistributor } from '@/lib/auth/session';
+import { requireAuth } from '@/lib/auth/session';
 
 // Force dynamic rendering and Node.js runtime
 export const dynamic = 'force-dynamic';
@@ -12,8 +12,12 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const session = await requireDistributor();
+        const session = await requireAuth();
         const { id } = params;
+
+        if (session.role === 'ADMIN') {
+            return NextResponse.json({ message: 'Notification marked as read' });
+        }
 
         // Get distributor ID
         const distributor = await prisma.distributor.findUnique({

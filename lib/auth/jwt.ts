@@ -3,6 +3,9 @@ import * as jwt from 'jsonwebtoken';
 import { jwtVerify } from 'jose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production';
+if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'fallback-secret-key-change-in-production')) {
+    console.warn('[SECURITY WARNING] JWT_SECRET is not set or using fallback value in production! Please define a strong secret in your environment.');
+}
 const JWT_EXPIRES_IN = '7d'; // 7 days
 
 export interface JWTPayload {

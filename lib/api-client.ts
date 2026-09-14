@@ -251,8 +251,22 @@ class ApiClient {
         return unwrapPaginatedResponse(response);
     }
 
+    /** PATCH /api/notifications/[id] — mark single notification as read */
+    async markNotificationReadById(id: string) {
+        return this.request(`/notifications/${id}`, { method: 'PATCH' });
+    }
+
+    /** @deprecated Use markNotificationReadById instead */
     async markNotificationRead(id: string) {
         return this.request(`/notifications/${id}/read`, { method: 'PATCH' });
+    }
+
+    /** Mark all notifications as read in one operation */
+    async markAllNotificationsRead() {
+        return this.request('/notifications/mark-read', {
+            method: 'POST',
+            body: JSON.stringify({ markAll: true }),
+        });
     }
 
     // Notification Preferences
@@ -303,12 +317,12 @@ class ApiClient {
         return unwrapPaginatedResponse(response);
     }
 
-    // News
+    // News (authenticated — for dashboard use)
     async getNews(params?: Record<string, string>) {
-        const response = await this.request<PaginatedResponse<any>>('/news', {
-            params,
-        });
-        return unwrapPaginatedResponse(response);
+        const response = await this.request<any>('/news', { params });
+        // Handle both paginated and plain responses
+        if (response.pagination) return { data: response.data, pagination: response.pagination };
+        return unwrapPaginatedResponse(response as PaginatedResponse<any>);
     }
 
     async createNews(data: any) {
@@ -329,6 +343,25 @@ class ApiClient {
 
     async deleteNews(id: string) {
         return this.request(`/news/${id}`, { method: 'DELETE' });
+    }
+
+    /**
+     * Public news methods — no authentication required.
+     * Safe to call from public pages without a session.
+     */
+    async getPublicNews(params?: Record<string, string>) {
+        const url = params
+            ? `/api/news?${new URLSearchParams(params).toString()}`
+            : '/api/news';
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch news');
+        return response.json();
+    }
+
+    async getPublicNewsById(id: string) {
+        const response = await fetch(`/api/news/${id}`);
+        if (!response.ok) throw new Error('Article not found');
+        return response.json();
     }
 }
 

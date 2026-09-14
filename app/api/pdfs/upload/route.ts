@@ -106,12 +106,20 @@ export async function POST(request: NextRequest) {
 
             console.log('[PDF Upload] PDF created with ID:', pdfUpload.id, 'categoryId:', pdfUpload.categoryId);
 
-            // Create notifications for all targeted distributors
+            // Create typed notifications for all targeted distributors
             if (targetDistributorIds.length > 0) {
+                const notifTitle = 'New Document Received';
+                const notifMessage = categoryExists?.name
+                    ? `${file.name} (${categoryExists.name}) has been shared with your company.`
+                    : `${file.name} has been shared with your company.`;
+
                 await tx.notification.createMany({
                     data: targetDistributorIds.map((distId) => ({
-                        pdfId: pdfUpload.id,
                         distId,
+                        type: 'PDF' as const,
+                        title: notifTitle,
+                        message: notifMessage,
+                        pdfId: pdfUpload.id,
                         readFlag: false,
                     })),
                 });

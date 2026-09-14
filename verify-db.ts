@@ -44,7 +44,7 @@ async function checkDatabase() {
     const notifications = await prisma.notification.findMany();
     console.log(`\n✅ NOTIFICATIONS TABLE: ${notifications.length} records`);
     notifications.forEach((notif, index) => {
-        console.log(`  ${index + 1}. PDF: ${notif.pdfId.substring(0, 8)}... - Read: ${notif.readFlag}`);
+        console.log(`  ${index + 1}. Type: ${(notif as any).type || 'PDF'} | PDF: ${notif.pdfId ? notif.pdfId.substring(0, 8) + '...' : 'N/A'} - Read: ${notif.readFlag}`);
     });
 
     // Check Logs

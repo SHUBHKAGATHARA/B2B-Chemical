@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -13,6 +14,7 @@ import {
     LogOut,
     Settings,
     AlertCircle,
+    X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +24,25 @@ interface SidebarProps {
 
 export default function Sidebar({ userRole }: SidebarProps) {
     const pathname = usePathname();
+    const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+    useEffect(() => {
+        const handleToggle = () => setIsMobileOpen((prev) => !prev);
+        const handleClose = () => setIsMobileOpen(false);
+
+        window.addEventListener('toggle-mobile-sidebar', handleToggle);
+        window.addEventListener('resize', handleClose);
+
+        return () => {
+            window.removeEventListener('toggle-mobile-sidebar', handleToggle);
+            window.removeEventListener('resize', handleClose);
+        };
+    }, []);
+
+    // Close mobile sidebar on route navigation
+    useEffect(() => {
+        setIsMobileOpen(false);
+    }, [pathname]);
 
     const adminSections = [
         {
@@ -77,18 +98,30 @@ export default function Sidebar({ userRole }: SidebarProps) {
 
     const sections = userRole === 'ADMIN' ? adminSections : distributorSections;
 
-    return (
-        <aside className="w-64 bg-white border-r border-gray-200 min-h-screen fixed left-0 top-0 z-30 flex flex-col hidden lg:flex overflow-hidden">
+    const sidebarContent = (
+        <>
             {/* Logo */}
-            <div className="h-16 flex items-center px-6 border-b border-gray-200 flex-shrink-0">
-                <Link href="/dashboard" className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center">
-                        <Beaker className="w-6 h-6 text-white" strokeWidth={2.5} />
-                    </div>
-                    <div>
-                        <h2 className="font-bold text-gray-900 text-base">SpentiCachemicals</h2>
+            <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200 flex-shrink-0">
+                <Link href="/dashboard" className="flex items-center gap-3" onClick={() => setIsMobileOpen(false)}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                        src="/spentica-logo.png"
+                        alt="Spentica Chemicals"
+                        className="w-10 h-10 object-contain flex-shrink-0"
+                    />
+                    <div className="flex flex-col leading-tight">
+                        <span className="font-black text-gray-900 text-base tracking-tight">Spentica</span>
+                        <span className="font-bold text-[#2E7D32] text-sm tracking-tight -mt-0.5">Chemicals</span>
                     </div>
                 </Link>
+                {/* Close Button on Mobile */}
+                <button
+                    onClick={() => setIsMobileOpen(false)}
+                    className="lg:hidden p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                    aria-label="Close navigation"
+                >
+                    <X className="w-5 h-5" />
+                </button>
             </div>
 
             {/* Navigation */}
@@ -107,6 +140,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
                                     <Link
                                         key={link.href}
                                         href={link.href}
+                                        onClick={() => setIsMobileOpen(false)}
                                         className={cn(
                                             'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium group',
                                             isActive
@@ -146,11 +180,42 @@ export default function Sidebar({ userRole }: SidebarProps) {
                     <p className="text-xs text-gray-600">Check our docs or contact support.</p>
                 </div>
 
-                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-800 hover:bg-red-50 hover:text-red-600 transition-colors border border-gray-200 hover:border-red-200">
+                <Link
+                    href="/login"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-800 hover:bg-red-50 hover:text-red-600 transition-colors border border-gray-200 hover:border-red-200"
+                >
                     <LogOut className="w-5 h-5" strokeWidth={2} />
                     <span>Log Out</span>
-                </button>
+                </Link>
             </div>
-        </aside>
+        </>
+    );
+
+    return (
+        <>
+            {/* Desktop Sidebar */}
+            <aside className="w-64 bg-white border-r border-gray-200 min-h-screen fixed left-0 top-0 z-30 flex flex-col hidden lg:flex overflow-hidden">
+                {sidebarContent}
+            </aside>
+
+            {/* Mobile Backdrop */}
+            {isMobileOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+                    onClick={() => setIsMobileOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
+
+            {/* Mobile Drawer */}
+            <aside
+                className={cn(
+                    'fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white z-50 flex flex-col shadow-2xl transition-transform duration-300 ease-in-out lg:hidden',
+                    isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+                )}
+            >
+                {sidebarContent}
+            </aside>
+        </>
     );
 }

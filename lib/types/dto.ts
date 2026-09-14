@@ -197,14 +197,28 @@ export interface PdfDownloadDTO {
 
 export interface NotificationDTO {
     id: string;
+    type: 'PDF' | 'NEWS' | 'SYSTEM';
+    title: string;
+    message: string;
     readFlag: boolean;
     createdAt: string;
+    pdfId: string | null;
+    newsId: string | null;
+    // Nested objects (nullable depending on type)
     pdf: {
         id: string;
         fileName: string;
         createdAt: string;
         uploadedByName: string;
-    };
+        categoryName?: string | null;
+    } | null;
+    news: {
+        id: string;
+        title: string;
+        category: string;
+        imageUrl: string | null;
+        publishDate: string;
+    } | null;
 }
 
 export interface NotificationSummaryDTO {
@@ -212,6 +226,7 @@ export interface NotificationSummaryDTO {
     unread: number;
     notifications: NotificationDTO[];
 }
+
 
 export interface NotificationPreferencesDTO {
     inApp: boolean;

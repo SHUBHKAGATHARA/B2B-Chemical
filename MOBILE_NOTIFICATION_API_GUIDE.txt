@@ -1,0 +1,584 @@
+================================================================================
+SPENTICA CHEMICALS — MOBILE NOTIFICATION API INTEGRATION GUIDE
+Step-by-Step Instructions for Consuming APIs & Sending Notifications to Mobile
+================================================================================
+
+BASE URL:
+- Local Development: http://localhost:3000 (or your machine IP: http://192.168.x.x:3000)
+- Production:        https://your-domain.com
+
+TABLE OF CONTENTS:
+1. Architecture & Workflow Overview
+2. Step 1: Mobile User Login (Obtaining Auth Token)
+3. Step 2: Registering Mobile Device Token (FCM / APNs)
+4. Step 3: Triggering Push Notifications (Automated & Manual API)
+5. Step 4: Fetching In-App Notifications & Unread Badge Count
+6. Step 5: Marking Notifications as Read on Mobile
+7. Step 6: Managing Mobile Notification Preferences
+8. Step 7: Unregistering Device Token on Logout
+9. Complete Code Examples:
+   - cURL Examples (Testing via Terminal / Postman)
+   - React Native (JavaScript / TypeScript)
+   - Flutter (Dart)
+10. Production Setup Checklist (Firebase FCM / Apple APNs)
+
+================================================================================
+1. ARCHITECTURE & WORKFLOW OVERVIEW
+================================================================================
+
+The notification system consists of two communication channels:
+  A) Push Notifications: Delivered directly to the phone's lock screen & notification
+     tray via Apple APNs (iOS) or Google Firebase Cloud Messaging (Android).
+  B) In-App Notification Feed: The notification center/bell icon inside the app showing
+     history, read/unread status, document links, and badge counters.
+
+LIFECYCLE:
+  1. Mobile App logs in using email & password -> receives JWT Bearer Token.
+  2. Mobile App retrieves FCM/APNs push token from the operating system.
+  3. Mobile App calls POST /api/devices with Bearer Token + Device Push Token.
+  4. When an Admin uploads a COA PDF, publishes News, or sends an alert:
+     - Backend creates In-App Notification records in database.
+     - Backend queries active device tokens for the recipient distributor/user.
+     - Backend pushes payload to Apple APNs / Firebase FCM -> User phone rings/vibrates.
+  5. Mobile App fetches notification list via GET /api/notifications.
+  6. When user taps notification, Mobile App calls POST /api/notifications/mark-read.
+
+================================================================================
+2. STEP 1: MOBILE USER LOGIN (OBTAINING AUTH TOKEN)
+================================================================================
+
+All protected endpoints require an Authorization Bearer token header:
+  Authorization: Bearer <YOUR_JWT_TOKEN>
+
+ENDPOINT:
+  POST /api/auth/login
+
+HEADERS:
+  Content-Type: application/json
+
+REQUEST BODY:
+{
+  "email": "distributor@example.com",
+  "password": "Password123!"
+}
+
+SUCCESS RESPONSE (200 OK):
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "usr_clx987654321",
+      "email": "distributor@example.com",
+      "fullName": "Acme Chemicals Distribution",
+      "role": "DISTRIBUTOR"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "expiresAt": "2026-09-21T04:20:00.000Z"
+  }
+}
+
+* ACTION REQUIRED ON MOBILE:
+  Save "token" in SecureStore (React Native), FlutterSecureStorage (Flutter),
+  or Keychain/Keystore (iOS/Android). Attach it to all subsequent requests.
+
+================================================================================
+3. STEP 2: REGISTERING MOBILE DEVICE TOKEN (FCM / APNs)
+================================================================================
+
+Once the user is logged in, your mobile app obtains a push token from Firebase
+(Android) or APNs (iOS). You must send this token to Spentica backend so the server
+knows which phone to send push alerts to.
+
+ENDPOINT:
+  POST /api/devices
+
+HEADERS:
+  Content-Type: application/json
+  Authorization: Bearer <YOUR_JWT_TOKEN>
+
+REQUEST BODY:
+{
+  "token": "fcm_or_apns_device_token_string_here",
+  "platform": "ANDROID",   // Allowed values: "IOS", "ANDROID", "WEB"
+  "deviceInfo": {
+    "model": "Samsung Galaxy S24 / iPhone 15 Pro",
+    "osVersion": "Android 14 / iOS 17.5",
+    "appVersion": "1.0.0"
+  }
+}
+
+SUCCESS RESPONSE (201 Created or 200 OK):
+{
+  "success": true,
+  "data": {
+    "deviceToken": {
+      "id": "dt_clx123456",
+      "platform": "ANDROID",
+      "isActive": true,
+      "lastUsed": "2026-09-14T04:22:00.000Z"
+    },
+    "message": "Device registered successfully"
+  }
+}
+
+================================================================================
+4. STEP 3: TRIGGERING PUSH NOTIFICATIONS
+================================================================================
+
+Push notifications are triggered in two ways:
+
+--- METHOD A: AUTOMATIC SYSTEM TRIGGERS (BUILT-IN) ---
+You don't need to do anything manual. The backend automatically dispatches push
+notifications when:
+  1. PDF Transfer: When an admin uploads and assigns a COA/TDS document to a
+     distributor company, the backend looks up all active users in that company,
+     checks their notification preferences, and sends a push alert:
+       Title: "New Document Received"
+       Body:  "Batch_COA_1029.pdf has been shared with your company."
+       Data:  { "type": "PDF", "pdfId": "..." }
+
+  2. News Publish: When an industry news article is published:
+       Title: "New Industry Update"
+       Body:  "A new article has been published: [Article Title]"
+       Data:  { "type": "NEWS", "newsId": "..." }
+
+--- METHOD B: EXTERNAL SERVER / API TRIGGER ---
+If you have an external ERP, automated scanner, or script that wants to trigger
+a notification for distributor(s) when a file is uploaded:
+
+ENDPOINT:
+  POST /api/notifications/send
+
+HEADERS:
+  Content-Type: application/json
+
+REQUEST BODY:
+{
+  "distributorIds": [
+    "dist_clx111111111",
+    "dist_clx222222222"
+  ],
+  "pdfId": "pdf_clx999999999",
+  "apiKey": "your-secret-api-key"
+}
+
+SUCCESS RESPONSE (200 OK):
+{
+  "success": true,
+  "message": "Notifications sent to 2 distributor(s)",
+  "data": {
+    "notificationCount": 2,
+    "pdf": {
+      "id": "pdf_clx999999999",
+      "fileName": "Certificate_Of_Analysis_Ethanol_99.pdf"
+    }
+  }
+}
+
+================================================================================
+5. STEP 4: FETCHING IN-APP NOTIFICATIONS & UNREAD BADGE COUNT
+================================================================================
+
+Use this to populate the notification list screen and display the red badge count
+over the bell icon on the mobile phone.
+
+ENDPOINT:
+  GET /api/notifications
+
+QUERY PARAMETERS (OPTIONAL):
+  - page:       Page number (default: 1)
+  - limit:      Items per page (default: 20, max: 50)
+  - readFlag:   "false" for unread only, "true" for read only (omit for all)
+  - type:       Filter by "PDF", "NEWS", or "SYSTEM"
+
+HEADERS:
+  Authorization: Bearer <YOUR_JWT_TOKEN>
+
+EXAMPLE REQUEST URL:
+  GET /api/notifications?page=1&limit=20&readFlag=false
+
+SUCCESS RESPONSE (200 OK):
+{
+  "success": true,
+  "data": [
+    {
+      "id": "notif_clx001",
+      "type": "PDF",
+      "title": "New Document Received",
+      "message": "TDS_Polymer_Grade.pdf has been shared with your company.",
+      "readFlag": false,
+      "createdAt": "2026-09-14T04:15:00.000Z",
+      "pdf": {
+        "id": "pdf_clx123",
+        "fileName": "TDS_Polymer_Grade.pdf",
+        "fileSize": 2048500
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrev": false,
+    "unreadCount": 1
+  }
+}
+
+* BADGE COUNT ON MOBILE:
+  Use `response.pagination.unreadCount` to update the mobile app icon badge number
+  (e.g., via react-native-notifications or Flutter AppBadger).
+
+================================================================================
+6. STEP 5: MARKING NOTIFICATIONS AS READ ON MOBILE
+================================================================================
+
+When a user taps an individual notification item or taps "Mark All as Read":
+
+ENDPOINT:
+  POST /api/notifications/mark-read
+
+HEADERS:
+  Content-Type: application/json
+  Authorization: Bearer <YOUR_JWT_TOKEN>
+
+--- OPTION A: Mark Specific Notification(s) as Read ---
+REQUEST BODY:
+{
+  "notificationIds": [
+    "notif_clx001",
+    "notif_clx002"
+  ]
+}
+
+SUCCESS RESPONSE (200 OK):
+{
+  "success": true,
+  "message": "Notifications marked as read"
+}
+
+--- OPTION B: Mark All as Read ---
+REQUEST BODY:
+{
+  "markAll": true
+}
+
+SUCCESS RESPONSE (200 OK):
+{
+  "success": true,
+  "message": "All notifications marked as read"
+}
+
+================================================================================
+7. STEP 6: MANAGING MOBILE NOTIFICATION PREFERENCES
+================================================================================
+
+Allow users to customize push alert preferences in their Mobile App Settings.
+
+--- GET CURRENT PREFERENCES ---
+ENDPOINT:
+  GET /api/notifications/preferences
+
+HEADERS:
+  Authorization: Bearer <YOUR_JWT_TOKEN>
+
+RESPONSE:
+{
+  "success": true,
+  "data": {
+    "inApp": true,
+    "push": true,
+    "email": true,
+    "categories": {
+      "pdfAssignments": true,
+      "newsUpdates": true,
+      "statusChanges": true,
+      "systemAlerts": true
+    }
+  }
+}
+
+--- UPDATE PREFERENCES ---
+ENDPOINT:
+  PUT /api/notifications/preferences
+
+HEADERS:
+  Content-Type: application/json
+  Authorization: Bearer <YOUR_JWT_TOKEN>
+
+REQUEST BODY:
+{
+  "push": true,
+  "categories": {
+    "pdfAssignments": true,
+    "newsUpdates": false
+  }
+}
+
+SUCCESS RESPONSE (200 OK):
+{
+  "success": true,
+  "data": { ...updatedPreferences },
+  "message": "Notification preferences updated successfully"
+}
+
+================================================================================
+8. STEP 7: UNREGISTERING DEVICE TOKEN ON LOGOUT
+================================================================================
+
+When the user logs out from the mobile app, remove their device token so they
+stop receiving push notifications on that physical phone:
+
+ENDPOINT:
+  DELETE /api/devices?token=<DEVICE_PUSH_TOKEN>
+
+HEADERS:
+  Authorization: Bearer <YOUR_JWT_TOKEN>
+
+SUCCESS RESPONSE (200 OK):
+{
+  "success": true,
+  "data": {
+    "message": "Device token removed successfully"
+  }
+}
+
+================================================================================
+9. COMPLETE CODE EXAMPLES
+================================================================================
+
+--------------------------------------------------------------------------------
+A) cURL CLI EXAMPLES (TEST IN TERMINAL OR POSTMAN)
+--------------------------------------------------------------------------------
+
+1. Login & extract token:
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"distributor@spentica.com","password":"Password123!"}'
+
+2. Register Device Token:
+curl -X POST http://localhost:3000/api/devices \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "token": "fcm_test_device_token_abc123",
+    "platform": "ANDROID",
+    "deviceInfo": {"model":"Pixel 8","osVersion":"14"}
+  }'
+
+3. Fetch Unread Notifications:
+curl -X GET "http://localhost:3000/api/notifications?readFlag=false" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+4. Mark Notification as Read:
+curl -X POST http://localhost:3000/api/notifications/mark-read \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"notificationIds":["notif_clx001"]}'
+
+--------------------------------------------------------------------------------
+B) REACT NATIVE / EXPO (TYPESCRIPT)
+--------------------------------------------------------------------------------
+
+```typescript
+import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+
+const API_BASE = 'https://your-domain.com/api';
+
+// 1. Authenticate and save token
+export async function loginMobile(email: string, password: string) {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const json = await res.json();
+  if (json.success) {
+    await AsyncStorage.setItem('authToken', json.data.token);
+    // After login, register push token
+    await registerForPushNotifications();
+  }
+  return json;
+}
+
+// 2. Obtain device push token & register with Spentica backend
+export async function registerForPushNotifications() {
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') {
+    console.warn('Push notification permission denied');
+    return;
+  }
+
+  const tokenData = await Notifications.getDevicePushTokenAsync();
+  const pushToken = tokenData.data;
+  const authToken = await AsyncStorage.getItem('authToken');
+
+  await fetch(`${API_BASE}/devices`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({
+      token: pushToken,
+      platform: Platform.OS === 'ios' ? 'IOS' : 'ANDROID',
+      deviceInfo: {
+        model: Platform.constants.Model || 'MobileDevice',
+        osVersion: String(Platform.Version),
+        appVersion: '1.0.0',
+      },
+    }),
+  });
+}
+
+// 3. Fetch notifications feed
+export async function fetchNotifications(unreadOnly = false) {
+  const authToken = await AsyncStorage.getItem('authToken');
+  const url = `${API_BASE}/notifications?limit=20${unreadOnly ? '&readFlag=false' : ''}`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${authToken}` },
+  });
+  return await res.json();
+}
+
+// 4. Mark notifications as read
+export async function markAsRead(notificationIds: string[]) {
+  const authToken = await AsyncStorage.getItem('authToken');
+  await fetch(`${API_BASE}/notifications/mark-read`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({ notificationIds }),
+  });
+}
+```
+
+--------------------------------------------------------------------------------
+C) FLUTTER (DART)
+--------------------------------------------------------------------------------
+
+```dart
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+class SpenticaNotificationService {
+  static const String baseUrl = 'https://your-domain.com/api';
+  final _storage = const FlutterSecureStorage();
+  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+
+  // 1. Login User
+  Future<bool> login(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final token = data['data']['token'];
+      await _storage.write(key: 'jwt_token', value: token);
+      await registerDevice();
+      return true;
+    }
+    return false;
+  }
+
+  // 2. Register Device Push Token
+  Future<void> registerDevice() async {
+    NotificationSettings settings = await _fcm.requestPermission();
+    if (settings.authorizationStatus != AuthorizationStatus.authorized) return;
+
+    String? fcmToken = await _fcm.getToken();
+    String? jwt = await _storage.read(key: 'jwt_token');
+
+    if (fcmToken != null && jwt != null) {
+      await http.post(
+        Uri.parse('$baseUrl/devices'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $jwt',
+        },
+        body: jsonEncode({
+          'token': fcmToken,
+          'platform': Platform.isIOS ? 'IOS' : 'ANDROID',
+          'deviceInfo': {
+            'osVersion': Platform.operatingSystemVersion,
+            'appVersion': '1.0.0',
+          },
+        }),
+      );
+    }
+  }
+
+  // 3. Fetch Notification List & Unread Count
+  Future<Map<String, dynamic>> getNotifications({bool unreadOnly = false}) async {
+    String? jwt = await _storage.read(key: 'jwt_token');
+    final query = unreadOnly ? '?readFlag=false' : '';
+
+    final res = await http.get(
+      Uri.parse('$baseUrl/notifications$query'),
+      headers: {'Authorization': 'Bearer $jwt'},
+    );
+    return jsonDecode(res.body);
+  }
+
+  // 4. Mark Notification Read
+  Future<void> markRead(List<String> ids) async {
+    String? jwt = await _storage.read(key: 'jwt_token');
+    await http.post(
+      Uri.parse('$baseUrl/notifications/mark-read'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $jwt',
+      },
+      body: jsonEncode({'notificationIds': ids}),
+    );
+  }
+}
+```
+
+================================================================================
+10. PRODUCTION SETUP CHECKLIST (FIREBASE FCM & APNs)
+================================================================================
+
+To ensure physical mobile devices receive lock-screen push alerts:
+
+1. FIREBASE SETUP:
+   - Create a project in Google Firebase Console (https://console.firebase.google.com).
+   - Add your Android app (download `google-services.json`) and iOS app
+     (download `GoogleService-Info.plist`).
+   - Go to Project Settings -> Service Accounts -> Generate New Private Key.
+   - Save the JSON credential and set environment variable in `.env`:
+     FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account",...}'
+
+2. APPLE APNs (iOS):
+   - In Apple Developer Portal, create an APNs Key (.p8 file).
+   - Upload the APNs Key into Firebase Console under Project Settings -> Cloud Messaging -> Apple app configuration.
+
+3. SPENTICA BACKEND DISPATCH:
+   - The Spentica backend already contains `lib/services/notification-service.ts`
+     with `sendPushNotification(userId, payload)`.
+   - When a Firebase Admin SDK instance is initialized with `FIREBASE_SERVICE_ACCOUNT_KEY`,
+     the backend sends notifications via `firebase-admin.messaging().sendEachForMulticast()`
+     to all active tokens stored in the `device_tokens` database table.
+
+================================================================================
+End of Guide — Spentica Chemicals API Documentation
+================================================================================

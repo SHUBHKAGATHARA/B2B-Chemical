@@ -182,26 +182,51 @@ export function toPdfListItemDTO(
 
 export function toNotificationDTO(
     notification: Notification & {
-        pdf: {
+        pdf?: {
             id: string;
             fileName: string;
             createdAt: Date;
-            uploadedBy: {
+            uploadedBy?: {
                 fullName: string;
-            };
-        };
+            } | null;
+            category?: { name: string } | null;
+        } | null;
+        news?: {
+            id: string;
+            title: string;
+            category: string;
+            imageUrl: string | null;
+            publishDate: Date;
+        } | null;
     }
 ): NotificationDTO {
     return {
         id: notification.id,
+        type: (notification as any).type || 'PDF',
+        title: (notification as any).title || 'New Document Received',
+        message: (notification as any).message || '',
         readFlag: notification.readFlag,
         createdAt: notification.createdAt.toISOString(),
-        pdf: {
-            id: notification.pdf.id,
-            fileName: notification.pdf.fileName,
-            createdAt: notification.pdf.createdAt.toISOString(),
-            uploadedByName: notification.pdf.uploadedBy?.fullName || 'Unknown',
-        },
+        pdfId: (notification as any).pdfId || null,
+        newsId: (notification as any).newsId || null,
+        pdf: notification.pdf
+            ? {
+                  id: notification.pdf.id,
+                  fileName: notification.pdf.fileName,
+                  createdAt: notification.pdf.createdAt.toISOString(),
+                  uploadedByName: notification.pdf.uploadedBy?.fullName || 'Unknown',
+                  categoryName: notification.pdf.category?.name || null,
+              }
+            : null,
+        news: notification.news
+            ? {
+                  id: notification.news.id,
+                  title: notification.news.title,
+                  category: notification.news.category,
+                  imageUrl: notification.news.imageUrl,
+                  publishDate: notification.news.publishDate.toISOString(),
+              }
+            : null,
     };
 }
 

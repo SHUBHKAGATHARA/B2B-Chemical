@@ -27,7 +27,13 @@ export default function Header({ userName = 'Admin User', userRole = 'Super Admi
             <div className="h-full flex items-center justify-between">
                 {/* Mobile Menu Button */}
                 <button
-                    onClick={() => setShowMobileMenu(!showMobileMenu)}
+                    onClick={() => {
+                        setShowMobileMenu(!showMobileMenu);
+                        if (typeof window !== 'undefined') {
+                            window.dispatchEvent(new CustomEvent('toggle-mobile-sidebar'));
+                        }
+                    }}
+                    aria-label="Toggle navigation menu"
                     className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                     <Menu className="w-6 h-6 text-gray-700" />

@@ -2,8 +2,22 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyToken } from './lib/auth/jwt';
 
-// strictly public routes
-const PUBLIC_ROUTES = ['/login', '/api/auth/login'];
+// Strictly public routes (always accessible without authentication)
+const PUBLIC_ROUTES = [
+    '/login',
+    '/api/auth/login',
+];
+
+// Public API routes (GET requests only)
+const PUBLIC_API_ROUTES = [
+    '/api/news',
+];
+
+// Public page routes (no auth required)
+const PUBLIC_PAGE_ROUTES = [
+    '/',
+    '/news',
+];
 
 // CORS headers for mobile app support
 const CORS_HEADERS = {
@@ -39,6 +53,22 @@ function getTokenFromRequest(request: NextRequest): string | null {
     return request.cookies.get('auth_token')?.value || null;
 }
 
+/**
+ * Check if this request is for a public page route
+ */
+function isPublicPageRoute(pathname: string): boolean {
+    if (pathname === '/') return true;
+    return PUBLIC_PAGE_ROUTES.filter(route => route !== '/').some(route => pathname === route || pathname.startsWith(route + '/'));
+}
+
+/**
+ * Check if this request is for a public API route (GET only)
+ */
+function isPublicApiRoute(pathname: string, method: string): boolean {
+    if (method !== 'GET') return false;
+    return PUBLIC_API_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
+}
+
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     
@@ -54,12 +84,9 @@ export async function middleware(request: NextRequest) {
 
     console.log(`[Middleware] ${request.method} ${pathname} - Token: ${!!token}`);
 
-    // 1. Handle Public Routes
+    // 1. Handle Strictly Public Routes (always allowed)
     if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
-        // We do NOT redirect to dashboard even if token exists.
-        // User wants to always see login page when visiting /login
         const response = NextResponse.next();
-        // Add CORS headers to public API routes too
         if (pathname.startsWith('/api')) {
             Object.entries(CORS_HEADERS).forEach(([key, value]) => {
                 response.headers.set(key, value);
@@ -68,8 +95,21 @@ export async function middleware(request: NextRequest) {
         return response;
     }
 
-    // 2. Enforce Authentication for EVERYTHING else (Deny by Default)
-    // If no token is present
+    // 2. Handle Public Page Routes (no auth required - e.g. /news, /news/[id])
+    if (isPublicPageRoute(pathname)) {
+        return NextResponse.next();
+    }
+
+    // 3. Handle Public API Routes (GET only - e.g. GET /api/news, GET /api/news/[id])
+    if (isPublicApiRoute(pathname, request.method)) {
+        const response = NextResponse.next();
+        Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+            response.headers.set(key, value);
+        });
+        return response;
+    }
+
+    // 4. Enforce Authentication for EVERYTHING else (Deny by Default)
     if (!token) {
         // If it's an API route, return 401 JSON with CORS headers for mobile
         if (pathname.startsWith('/api')) {
@@ -84,13 +124,12 @@ export async function middleware(request: NextRequest) {
                 401
             );
         }
-        // If it's a page navigation (including root '/'), redirect to login
+        // If it's a page navigation, redirect to login
         const loginUrl = new URL('/login', request.url);
-        // Optional: save the return url? loginUrl.searchParams.set('from', pathname);
         return NextResponse.redirect(loginUrl);
     }
 
-    // 3. Verify Token Validity
+    // 5. Verify Token Validity
     try {
         await verifyToken(token);
         // Token is valid, allow access
@@ -130,7 +169,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        // Match everything except static files and images
-        '/((?!_next/static|_next/image|favicon.ico|uploads).*)',
+        // Match everything EXCEPT Next.js internals, static assets, and public images
+        '/((?!_next/static|_next/image|favicon.ico|uploads|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|otf|eot)).*)',
     ],
 };

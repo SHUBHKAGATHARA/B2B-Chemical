@@ -89,23 +89,20 @@ export default function LoginPage() {
                 <div className="relative z-10 flex items-center justify-center w-full px-8">
                     <div className="text-center text-white max-w-xl">
                         {/* Logo */}
-                        <div className="flex justify-center mb-12 animate-slideInLeft">
-                            <div className="relative w-32 h-32">
-                                <Beaker className="w-full h-full drop-shadow-2xl" />
-                                <div className="absolute -top-2 -right-2">
-                                    <TestTube className="w-16 h-16 text-emerald-200 animate-float" />
-                                </div>
-                                <div className="absolute -bottom-2 -left-2">
-                                    <FlaskConical className="w-16 h-16 text-emerald-200 animate-float" style={{ animationDelay: '0.5s' }} />
-                                </div>
-                            </div>
+                        <div className="flex justify-center mb-8 animate-slideInLeft">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src="/spentica-logo.png"
+                                alt="Spentica Chemicals"
+                                className="w-32 h-32 object-contain drop-shadow-2xl"
+                            />
                         </div>
 
-                        <h1 className="text-5xl font-bold mb-3 animate-slideInLeft">
-                            B2B Chemical
+                        <h1 className="text-5xl font-bold mb-2 animate-slideInLeft">
+                            Spentica
                         </h1>
                         <h2 className="text-3xl font-bold mb-6 animate-slideInLeft">
-                            Management System
+                            Chemicals
                         </h2>
                         <p className="text-xl text-emerald-100 mb-8 animate-slideInLeft max-w-lg mx-auto">
                             Streamline your chemical distribution network with our modern, secure platform
@@ -134,6 +131,22 @@ export default function LoginPage() {
             <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 bg-gradient-to-br from-gray-50 to-emerald-50">
                 <div className="w-full max-w-md animate-slideInRight">
                     <div className="glass rounded-2xl shadow-2xl p-8 lg:p-10">
+                        {/* Mobile Brand Header */}
+                        <div className="flex flex-col items-center mb-6 lg:hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src="/spentica-logo.png"
+                                alt="Spentica Chemicals"
+                                className="w-14 h-14 object-contain"
+                            />
+                            <div className="text-center mt-2">
+                                <span className="font-serif-display text-xl font-black text-gray-900">
+                                    Spentica<span className="text-[#2E7D32]"> Chemicals</span>
+                                </span>
+                                <p className="text-xs text-gray-500 font-medium">B2B Distribution Platform</p>
+                            </div>
+                        </div>
+
                         <div className="mb-8 text-center">
                             <h2 className="text-3xl font-bold text-gray-900 mb-2">
                                 Welcome Back

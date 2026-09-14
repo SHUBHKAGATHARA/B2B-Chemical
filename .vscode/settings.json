@@ -2,6 +2,9 @@
   "css.validate": false,
   "css.lint.unknownAtRules": "ignore",
   "scss.validate": false,
+  "files.associations": {
+    "**/prisma/migrations/**/*.sql": "postgresql"
+  },
   "tailwindCSS.includeLanguages": {
     "typescript": "javascript",
     "typescriptreact": "javascript"
