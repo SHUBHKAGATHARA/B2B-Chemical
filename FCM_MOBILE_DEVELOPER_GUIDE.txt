@@ -1,0 +1,532 @@
+================================================================================
+SPENTICA CHEMICALS — MOBILE DEVELOPER API GUIDE
+INTEGRATING FIREBASE CLOUD MESSAGING (FCM) PUSH NOTIFICATIONS
+================================================================================
+
+Target Audience: Flutter / Android / iOS Mobile App Developers
+Backend Framework: Next.js / Node.js
+Firebase Project: spenticabyqubeso
+Base API URL:
+  - Development: http://YOUR_SERVER_IP:3000
+  - Production:  https://YOUR_VERCEL_DOMAIN.vercel.app
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. High-Level Flow & Architecture
+2. Mobile App Setup (Firebase Prerequisites)
+3. Step 1: User Authentication (Obtain JWT)
+4. Step 2: Request User Permissions & Get FCM Token
+5. Step 3: Register FCM Token to Backend (POST /api/devices)
+6. Step 4: Handle Automatic Token Refresh
+7. Step 5: Handle Incoming Push Notifications (Foreground & Background)
+8. Step 6: Notification Click Handling (Deep Linking to PDF / News)
+9. Step 7: Unregister Token on Logout (DELETE /api/devices)
+10. Complete Flutter (Dart) Notification Service Code
+11. End-to-End Testing Checklist
+
+================================================================================
+1. HIGH-LEVEL FLOW & ARCHITECTURE
+================================================================================
+
+  +---------------+       1. Login       +-------------------+
+  |   Flutter     | -------------------> |  Spentica Backend |
+  |   Mobile      | <------------------- |  (Returns JWT)    |
+  |     App       |       2. Bearer      +-------------------+
+  +---------------+
+          |
+          | 3. Get FCM Token
+          v
+  +---------------+
+  | Firebase FCM  |
+  +---------------+
+          |
+          | 4. Token returned
+          v
+  +---------------+       5. POST /api/devices       +-------------------+
+  |   Flutter     | -------------------------------> |  Spentica Backend |
+  |   Mobile      |   (Token + Platform + JWT)       |  (Stores in DB)   |
+  |     App       | <------------------------------- +-------------------+
+  +---------------+       6. 201 Created                       |
+                                                               |
+  ==============================================================
+  WHEN ADMIN PERFORMS ACTIONS ON WEB DASHBOARD:
+  ==============================================================
+  Admin Uploads PDF / Posts News
+               |
+               v
+     +-------------------+     Multicast Message     +---------------+
+     |  Spentica Backend | ------------------------> | Firebase FCM  |
+     +-------------------+  (PDF or News notification)|  Servers      |
+                                                     +---------------+
+                                                             |
+                                                             | Push to phone
+                                                             v
+                                                     +---------------+
+                                                     |  Distributor  |
+                                                     |  Phone Alerts |
+                                                     +---------------+
+
+================================================================================
+2. MOBILE APP SETUP (FIREBASE PREREQUISITES)
+================================================================================
+
+1. Ensure your Flutter app is linked to the Firebase project:
+   - Project ID: spenticabyqubeso
+2. Place the config files:
+   - Android: android/app/google-services.json
+   - iOS: ios/Runner/GoogleService-Info.plist
+3. Add Flutter dependencies in pubspec.yaml:
+   dependencies:
+     firebase_core: ^3.0.0
+     firebase_messaging: ^15.0.0
+     flutter_local_notifications: ^17.0.0
+     http: ^1.2.0
+
+================================================================================
+3. STEP 1: USER AUTHENTICATION (OBTAIN JWT)
+================================================================================
+
+Before registering any device token, the user must log in to get a JWT token.
+
+ENDPOINT:
+  POST /api/auth/login
+
+HEADERS:
+  Content-Type: application/json
+
+REQUEST BODY:
+{
+  "email": "distributor@example.com",
+  "password": "Password123!"
+}
+
+SUCCESS RESPONSE (200 OK):
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "usr_abc123",
+      "email": "distributor@example.com",
+      "fullName": "Acme Chemicals Ltd",
+      "role": "DISTRIBUTOR"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "expiresAt": "2026-10-01T00:00:00.000Z"
+  }
+}
+
+* ACTION ON MOBILE:
+  Store the JWT `token` in secure storage (e.g. flutter_secure_storage).
+  You will need it for the Authorization header in all following steps.
+
+================================================================================
+4. STEP 2: REQUEST PERMISSIONS & GET FCM TOKEN
+================================================================================
+
+In Flutter, initialize Firebase and request push permissions (mandatory on iOS
+and Android 13+):
+
+```dart
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+// 1. Request Permission
+NotificationSettings settings = await messaging.requestPermission(
+  alert: true,
+  badge: true,
+  sound: true,
+);
+
+if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+  // 2. Get device FCM Token
+  String? fcmToken = await messaging.getToken();
+  print("FCM Device Token: $fcmToken");
+  // Proceed to Step 3 to register this token on the backend!
+}
+```
+
+================================================================================
+5. STEP 3: REGISTER FCM TOKEN TO BACKEND (POST /api/devices)
+================================================================================
+
+Send the FCM token to the Spentica backend so the server stores it in the database.
+
+ENDPOINT:
+  POST /api/devices
+
+HEADERS:
+  Content-Type: application/json
+  Authorization: Bearer <USER_JWT_TOKEN>
+
+REQUEST BODY:
+{
+  "token": "dK3_y8qWSEq7bA9...[actual FCM token from Firebase]...",
+  "platform": "ANDROID", 
+  "deviceInfo": {
+    "model": "Samsung Galaxy S23",
+    "osVersion": "Android 14",
+    "appVersion": "1.0.0"
+  }
+}
+
+VALID PLATFORM VALUES:
+  - "ANDROID"
+  - "IOS"
+  - "WEB"
+
+SUCCESS RESPONSE (200 OK / 201 Created):
+{
+  "success": true,
+  "data": {
+    "deviceToken": {
+      "id": "cm...unique_id...",
+      "platform": "ANDROID",
+      "isActive": true,
+      "lastUsed": "2026-09-16T18:00:00.000Z"
+    },
+    "message": "Device registered successfully"
+  }
+}
+
+* IMPORTANT:
+  Call this endpoint every time the user logs in, or right after app startup if
+  the user is already logged in. If the token is already in the database, the
+  backend automatically updates the `lastUsed` timestamp and activates it.
+
+================================================================================
+6. STEP 4: HANDLE AUTOMATIC TOKEN REFRESH
+================================================================================
+
+Firebase may periodically rotate FCM tokens (e.g., app restore, OS update).
+Listen for token refresh events and send the new token to the backend:
+
+```dart
+FirebaseMessaging.instance.onTokenRefresh.listen((String newToken) async {
+  print("FCM Token Refreshed: $newToken");
+  await registerDeviceTokenWithBackend(newToken);
+});
+```
+
+================================================================================
+7. STEP 5: HANDLE INCOMING NOTIFICATIONS (FOREGROUND & BACKGROUND)
+================================================================================
+
+When the admin uploads a PDF or creates News, the backend sends a push payload.
+
+PAYLOAD FORMAT SENT BY BACKEND:
+
+1. For "Upload PDF":
+   - Title: "New Document Uploaded"
+   - Body:  "A new PDF has been uploaded by the admin."
+   - Data payload:
+     {
+       "click_action": "FLUTTER_NOTIFICATION_CLICK",
+       "type": "PDF",
+       "pdfId": "cm87654321..."
+     }
+
+2. For "Create News":
+   - Title: "New Announcement"
+   - Body:  "Check out the latest news on the app!"
+   - Data payload:
+     {
+       "click_action": "FLUTTER_NOTIFICATION_CLICK",
+       "type": "NEWS",
+       "newsId": "cm12345678..."
+     }
+
+HANDLING IN FLUTTER:
+
+A) Background Handler (Must be a top-level function outside any class):
+```dart
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("Handling background push notification: ${message.messageId}");
+}
+```
+
+B) Foreground Handler (When the app is open and on screen):
+In foreground, Firebase does not automatically display system banner alerts on
+Android. Use `flutter_local_notifications` to show a heads-up banner:
+
+```dart
+FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  RemoteNotification? notification = message.notification;
+  AndroidNotification? android = message.notification?.android;
+
+  if (notification != null) {
+    flutterLocalNotificationsPlugin.show(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'high_importance_channel',
+          'General Notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: jsonEncode(message.data),
+    );
+  }
+});
+```
+
+================================================================================
+8. STEP 6: NOTIFICATION CLICK HANDLING (DEEP LINKING)
+================================================================================
+
+When a distributor taps on a push notification banner:
+
+```dart
+void handleNotificationClick(Map<String, dynamic> data) {
+  final String? type = data['type'];
+
+  if (type == 'PDF') {
+    final String? pdfId = data['pdfId'];
+    // Navigate to PDF viewer / download page
+    Navigator.pushNamed(context, '/pdf-details', arguments: {'pdfId': pdfId});
+  } else if (type == 'NEWS') {
+    final String? newsId = data['newsId'];
+    // Navigate to News article page
+    Navigator.pushNamed(context, '/news-details', arguments: {'newsId': newsId});
+  }
+}
+
+// Case 1: App opened from terminated state by tapping notification
+RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+if (initialMessage != null) {
+  handleNotificationClick(initialMessage.data);
+}
+
+// Case 2: App in background and user tapped notification
+FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+  handleNotificationClick(message.data);
+});
+```
+
+================================================================================
+9. STEP 7: UNREGISTER TOKEN ON LOGOUT (DELETE /api/devices)
+================================================================================
+
+When the user logs out, deactivate the device token so this phone stops receiving
+push notifications for that user.
+
+ENDPOINT:
+  DELETE /api/devices
+
+HEADERS:
+  Content-Type: application/json
+  Authorization: Bearer <USER_JWT_TOKEN>
+
+REQUEST BODY:
+{
+  "token": "dK3_y8qWSEq7bA9...[device FCM token]..."
+}
+
+SUCCESS RESPONSE (200 OK):
+{
+  "success": true,
+  "data": {
+    "message": "Device unregistered successfully"
+  }
+}
+
+================================================================================
+10. COMPLETE FLUTTER (DART) NOTIFICATION SERVICE CODE
+================================================================================
+
+Create a file in your Flutter app: `lib/services/notification_service.dart`
+Copy and paste this production-ready code:
+
+```dart
+import 'dart:convert';
+import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
+
+// Top-level background notification handler
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print("Background FCM message received: ${message.messageId}");
+}
+
+class NotificationService {
+  static final NotificationService _instance = NotificationService._internal();
+  factory NotificationService() => _instance;
+  NotificationService._internal();
+
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+
+  // Replace with your backend URL
+  final String _baseUrl = 'https://YOUR_VERCEL_DOMAIN.vercel.app';
+
+  // Initialize service
+  Future<void> initialize({required Function(Map<String, dynamic>) onNotificationTap}) async {
+    // 1. Request Push Permissions
+    NotificationSettings settings = await _messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+      print("User declined push notifications permission");
+      return;
+    }
+
+    // 2. Setup Local Notifications for Foreground display
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+
+    const InitializationSettings initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+
+    await _localNotifications.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        if (response.payload != null) {
+          final data = jsonDecode(response.payload!);
+          onNotificationTap(data);
+        }
+      },
+    );
+
+    // 3. Foreground Message Listener
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      RemoteNotification? notification = message.notification;
+      if (notification != null) {
+        _localNotifications.show(
+          notification.hashCode,
+          notification.title,
+          notification.body,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'spentica_channel',
+              'Spentica Alerts',
+              channelDescription: 'Notifications for documents and news updates',
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+            iOS: DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+            ),
+          ),
+          payload: jsonEncode(message.data),
+        );
+      }
+    });
+
+    // 4. Notification Tap when app is running in background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      onNotificationTap(message.data);
+    });
+
+    // 5. Notification Tap when app was closed/terminated
+    RemoteMessage? initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      onNotificationTap(initialMessage.data);
+    }
+
+    // 6. Token refresh listener
+    _messaging.onTokenRefresh.listen((newToken) {
+      // Re-register with backend if user is logged in
+      print("New refreshed FCM token: $newToken");
+    });
+  }
+
+  // Register Device Token to Backend
+  Future<bool> registerDeviceToken({required String authToken}) async {
+    try {
+      String? fcmToken = await _messaging.getToken();
+      if (fcmToken == null) return false;
+
+      final url = Uri.parse('$_baseUrl/api/devices');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'token': fcmToken,
+          'platform': Platform.isAndroid ? 'ANDROID' : 'IOS',
+          'deviceInfo': {
+            'os': Platform.operatingSystem,
+            'version': Platform.operatingSystemVersion,
+          },
+        }),
+      );
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print("Failed to register device token: $e");
+      return false;
+    }
+  }
+
+  // Unregister Device Token on Logout
+  Future<bool> unregisterDeviceToken({required String authToken}) async {
+    try {
+      String? fcmToken = await _messaging.getToken();
+      if (fcmToken == null) return false;
+
+      final url = Uri.parse('$_baseUrl/api/devices');
+      final response = await http.delete(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({
+          'token': fcmToken,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Failed to unregister device token: $e");
+      return false;
+    }
+  }
+}
+```
+
+================================================================================
+11. END-TO-END TESTING CHECKLIST
+================================================================================
+
+1. [ ] Log in on Flutter app with distributor credentials.
+2. [ ] Check mobile terminal / logs to verify `registerDeviceToken` returned 200/201.
+3. [ ] Put the Flutter app in the background (press Home button on phone).
+4. [ ] In the Admin Web Dashboard:
+       - Upload a new PDF $\rightarrow$ Phone receives:
+         "New Document Uploaded" - "A new PDF has been uploaded by the admin."
+       - Post a new News item $\rightarrow$ Phone receives:
+         "New Announcement" - "Check out the latest news on the app!"
+5. [ ] Tap on the notification $\rightarrow$ Verify app opens and deep-links to the item.
+================================================================================
