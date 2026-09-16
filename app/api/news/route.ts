@@ -4,8 +4,8 @@ import { getSession } from '@/lib/auth/session';
 import { z } from 'zod';
 import {
     createNewsNotificationsForAll,
-    attemptNewsPushNotifications,
 } from '@/lib/services/notification-service';
+import { sendPushNotification } from '@/lib/firebase-admin';
 
 // Force dynamic rendering and Node.js runtime
 export const dynamic = 'force-dynamic';
@@ -119,9 +119,12 @@ export async function POST(request: NextRequest) {
             console.error('[News] Failed to create in-app notifications (non-fatal):', err);
         });
 
-        // Attempt push notifications (always non-fatal)
-        attemptNewsPushNotifications(news.id, news.title).catch((err) => {
-            console.error('[News] Failed to attempt push notifications (non-fatal):', err);
+        // Send push notification to all mobile devices
+        sendPushNotification("New Announcement", "Check out the latest news on the app!", {
+            type: 'NEWS',
+            newsId: news.id,
+        }).catch((err) => {
+            console.error('[News] Failed to send push notification (non-fatal):', err);
         });
 
         return NextResponse.json({

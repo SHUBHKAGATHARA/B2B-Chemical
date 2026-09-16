@@ -7,5 +7,7 @@ node_modules
 dist
 uploads
 *.tsbuildinfo
+service-account.json
+*.pem
 prisma/migrations/*
 !prisma/migrations/.gitkeep

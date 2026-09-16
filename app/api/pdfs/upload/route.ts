@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth/session';
 import { saveUploadedFile, getFileFromRequest } from '@/lib/upload';
 import { AssignType } from '@prisma/client';
+import { sendPushNotification } from '@/lib/firebase-admin';
 
 // Force dynamic rendering and Node.js runtime
 export const dynamic = 'force-dynamic';
@@ -134,6 +135,14 @@ export async function POST(request: NextRequest) {
                 action: `Uploaded PDF: ${file.name} (${assignedGroup}, ${targetDistributorIds.length} distributors)`,
                 userId: session.userId,
             },
+        });
+
+        // Send push notification to all mobile devices
+        sendPushNotification("New Document Uploaded", "A new PDF has been uploaded by the admin.", {
+            type: 'PDF',
+            pdfId: result.id,
+        }).catch((pushErr) => {
+            console.error('[PDF Upload] Push notification failed:', pushErr);
         });
 
         // Fetch the complete PDF with relations for the response
