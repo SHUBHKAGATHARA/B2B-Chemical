@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth/session';
 import { updateDistributorSchema } from '@/lib/validations/schemas';
 import { uploadToCloudinary, validateImageFile, deleteFromCloudinary, extractPublicId } from '@/lib/cloudinary';
+import { hashPassword } from '@/lib/auth/jwt';
 
 // Force dynamic rendering and Node.js runtime
 export const dynamic = 'force-dynamic';
@@ -64,6 +65,7 @@ export async function PUT(
             body = {
                 companyName: formData.get('companyName'),
                 email: formData.get('email'),
+                password: formData.get('password') || undefined,
                 status: formData.get('status'),
             };
 
@@ -111,7 +113,7 @@ export async function PUT(
         // Get current distributor to check for existing logo
         const currentDistributor = await prisma.distributor.findUnique({
             where: { id },
-            select: { logoUrl: true, email: true },
+            select: { logoUrl: true, email: true, companyName: true },
         });
 
         if (!currentDistributor) {
@@ -161,17 +163,33 @@ export async function PUT(
         });
         console.log('[Distributor API PUT] Update successful, logoUrl:', distributor.logoUrl);
 
-        // Also update corresponding user if email or status changed
-        if (validation.data.email || validation.data.status || validation.data.companyName) {
-            const userUpdate: any = {};
-            if (validation.data.email) userUpdate.email = validation.data.email;
-            if (validation.data.status) userUpdate.status = validation.data.status;
-            if (validation.data.companyName) userUpdate.fullName = validation.data.companyName;
+        // Also update corresponding user if email, status, companyName, or password changed
+        const userUpdate: any = {};
+        if (validation.data.email) userUpdate.email = validation.data.email;
+        if (validation.data.status) userUpdate.status = validation.data.status;
+        if (validation.data.companyName) userUpdate.fullName = validation.data.companyName;
+        if (validation.data.password && validation.data.password.trim() !== '') {
+            userUpdate.passwordHash = await hashPassword(validation.data.password.trim());
+        }
 
-            await prisma.user.updateMany({
+        if (Object.keys(userUpdate).length > 0) {
+            const updated = await prisma.user.updateMany({
                 where: { email: currentDistributor.email },
                 data: userUpdate,
             });
+
+            // If user record didn't exist yet, create it so they can log in
+            if (updated.count === 0 && userUpdate.passwordHash) {
+                await prisma.user.create({
+                    data: {
+                        fullName: validation.data.companyName || currentDistributor.companyName || currentDistributor.email,
+                        email: validation.data.email || currentDistributor.email,
+                        passwordHash: userUpdate.passwordHash,
+                        role: 'DISTRIBUTOR',
+                        status: validation.data.status || 'ACTIVE',
+                    },
+                });
+            }
         }
 
         // Log action

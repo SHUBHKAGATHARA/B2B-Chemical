@@ -60,6 +60,11 @@ export default function DistributorsPage() {
             return;
         }
 
+        if (formData.password && formData.password.trim().length > 0 && formData.password.trim().length < 6) {
+            alert('Password must be at least 6 characters long');
+            return;
+        }
+
         console.log('[Distributor Form] Submit started, formData:', {
             companyName: formData.companyName,
             email: formData.email,

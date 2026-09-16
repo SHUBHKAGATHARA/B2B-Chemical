@@ -141,21 +141,37 @@ export default async function DashboardPage() {
             select: { id: true, companyName: true },
         });
 
-        const assignedPdfs = distributor
-            ? await prisma.pdfUpload.findMany({
+        let assignedPdfs: any[] = [];
+        if (distributor) {
+            const notifications = await prisma.notification.findMany({
                 where: {
-                    OR: [
-                        { assignedDistributorId: distributor.id },
-                        { assignedGroup: 'ALL' },
-                    ],
+                    distId: distributor.id,
+                    pdfId: { not: null },
                 },
+                select: { pdfId: true },
+            });
+            const notifiedPdfIds = notifications
+                .map((n) => n.pdfId)
+                .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+            const orConditions: any[] = [
+                { assignedDistributorId: distributor.id },
+                { assignedGroup: 'ALL' },
+            ];
+
+            if (notifiedPdfIds.length > 0) {
+                orConditions.push({ id: { in: notifiedPdfIds } });
+            }
+
+            assignedPdfs = await prisma.pdfUpload.findMany({
+                where: { OR: orConditions },
                 include: {
                     uploadedBy: { select: { fullName: true } },
                 },
                 orderBy: { createdAt: 'desc' },
                 take: 10,
-            })
-            : [];
+            });
+        }
 
         const totalAssigned = assignedPdfs.length;
         const pendingCount = assignedPdfs.filter(pdf => pdf.status === 'PENDING').length;

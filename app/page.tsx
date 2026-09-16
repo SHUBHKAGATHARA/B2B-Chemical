@@ -41,13 +41,18 @@ function getCategoryLabel(category: string) {
 export default async function HomePage() {
     const session = await getSession();
 
-    const latestNews = await prisma.news.findMany({
-        take: 3,
-        orderBy: { publishDate: 'desc' },
-        include: {
-            author: { select: { fullName: true } },
-        },
-    });
+    let latestNews: any[] = [];
+    try {
+        latestNews = await prisma.news.findMany({
+            take: 3,
+            orderBy: { publishDate: 'desc' },
+            include: {
+                author: { select: { fullName: true } },
+            },
+        });
+    } catch (error) {
+        console.error('Failed to fetch latest news on HomePage:', error);
+    }
 
     const today = new Date();
     const edition = `Vol. I · ${today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} · Global Edition`;

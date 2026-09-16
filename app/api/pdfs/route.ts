@@ -66,22 +66,32 @@ export async function GET(request: NextRequest) {
                 return paginatedResponse([], buildPaginationMeta(page, limit, 0));
             }
 
-            // Get all PDF IDs that have notifications for this distributor
+            // Get all PDF IDs that have notifications for this distributor (ignoring nulls from NEWS notifications)
             const notifications = await prisma.notification.findMany({
-                where: { distId: distributorId },
+                where: {
+                    distId: distributorId,
+                    pdfId: { not: null },
+                },
                 select: { pdfId: true },
             });
-            const notifiedPdfIds = notifications.map(n => n.pdfId);
+            const notifiedPdfIds = notifications
+                .map((n) => n.pdfId)
+                .filter((id): id is string => typeof id === 'string' && id.length > 0);
 
             // Distributor can see PDFs that:
             // 1. Are directly assigned to them (assignedDistributorId)
             // 2. Are assigned to ALL distributors
             // 3. Have a notification for them (for MULTIPLE assignments)
-            where.OR = [
+            const orConditions: any[] = [
                 { assignedDistributorId: distributorId },
                 { assignedGroup: 'ALL' },
-                { id: { in: notifiedPdfIds } },
             ];
+
+            if (notifiedPdfIds.length > 0) {
+                orConditions.push({ id: { in: notifiedPdfIds } });
+            }
+
+            where.OR = orConditions;
         }
 
         // Add text search

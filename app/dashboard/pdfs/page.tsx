@@ -61,7 +61,7 @@ export default function PdfsPage() {
             // Distributors don't need the distributors list
             if (isAdminUser) {
                 const [pdfsData, distsData, categoriesData] = await Promise.all([
-                    apiClient.getPdfs(),
+                    apiClient.getPdfs({ limit: '100' }),
                     apiClient.getDistributors(),
                     loadCategories(),
                 ]);
@@ -81,7 +81,7 @@ export default function PdfsPage() {
             } else {
                 // Distributors only need PDFs and categories
                 const [pdfsData, categoriesData] = await Promise.all([
-                    apiClient.getPdfs(),
+                    apiClient.getPdfs({ limit: '100' }),
                     loadCategories(),
                 ]);
                 setPdfs(pdfsData.data || []);

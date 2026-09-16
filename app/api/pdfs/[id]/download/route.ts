@@ -46,8 +46,15 @@ export async function GET(
             });
 
             if (distributor) {
-                // Check if assigned to this distributor or assigned to ALL
-                if (pdf.assignedGroup === 'ALL' || pdf.assignedDistributorId === distributor.id) {
+                // Check if assigned to this distributor, assigned to ALL, or has a notification for this PDF
+                const hasNotification = await prisma.notification.findFirst({
+                    where: {
+                        pdfId: pdf.id,
+                        distId: distributor.id,
+                    },
+                });
+
+                if (pdf.assignedGroup === 'ALL' || pdf.assignedDistributorId === distributor.id || Boolean(hasNotification)) {
                     hasAccess = true;
 
                     // Mark notification as read and update PDF status to DONE
