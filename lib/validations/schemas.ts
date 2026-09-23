@@ -50,8 +50,13 @@ export const paginationSchema = z.object({
 
 // Device token schemas
 export const registerDeviceSchema = z.object({
-    token: z.string().min(10),
-    platform: z.enum(['IOS', 'ANDROID']),
+    token: z.string().min(1, 'Token is required'), // FCM tokens can vary in length
+    // Normalize to uppercase so "android", "Android", "ANDROID" all work
+    platform: z.string()
+        .transform((v) => v.toUpperCase())
+        .pipe(z.enum(['IOS', 'ANDROID', 'WEB'], {
+            errorMap: () => ({ message: 'Platform must be IOS, ANDROID, or WEB' }),
+        })),
     deviceInfo: z.object({
         model: z.string().optional(),
         osVersion: z.string().optional(),

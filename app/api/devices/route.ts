@@ -18,14 +18,18 @@ export async function POST(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) {
+            console.warn('[POST /api/devices] No session — returning 401');
             return ErrorResponses.unauthorized();
         }
 
         const body = await request.json();
+        console.log('[POST /api/devices] Body received:', JSON.stringify(body));
+        console.log('[POST /api/devices] Session userId:', session.userId);
 
         // Validate input
         const validation = registerDeviceSchema.safeParse(body);
         if (!validation.success) {
+            console.warn('[POST /api/devices] Zod validation FAILED:', JSON.stringify(validation.error.errors));
             return ErrorResponses.validation(
                 'Invalid device registration data',
                 validation.error.errors
@@ -33,46 +37,47 @@ export async function POST(request: NextRequest) {
         }
 
         const { token, platform, deviceInfo } = validation.data;
+        console.log('[POST /api/devices] Validated — token length:', token.length, '| platform:', platform);
 
-        // Check if token already exists
+        // Upsert: if this exact token already belongs to this user → update it.
+        // If it belongs to a DIFFERENT user (e.g. shared test token) → delete old, create new.
+        // This fixes the bug where GET /api/devices returned [] because the token was
+        // stored under a different userId after being "updated" by the old code.
         const existingToken = await prisma.deviceToken.findUnique({
             where: { token },
         });
 
         if (existingToken) {
-            // Update existing token
-            const updated = await prisma.deviceToken.update({
-                where: { token },
-                data: {
-                    userId: session.userId,
-                    platform,
-                    isActive: true,
-                    deviceInfo: deviceInfo || undefined,
-                    lastUsed: new Date(),
-                },
-            });
-
-            return successResponse({
-                deviceToken: {
-                    id: updated.id,
-                    platform: updated.platform,
-                    isActive: updated.isActive,
-                    lastUsed: updated.lastUsed.toISOString(),
-                },
-                message: 'Device token updated successfully',
-            });
+            if (existingToken.userId !== session.userId) {
+                // Token was registered by a different user — delete it so we can re-create
+                // under the current user. (Common with test tokens like "fcm_token_here")
+                console.log('[POST /api/devices] Token belongs to different user — reassigning to current user');
+                await prisma.deviceToken.delete({ where: { token } });
+            }
         }
 
-        // Create new token
-        const deviceToken = await prisma.deviceToken.create({
-            data: {
+        // Upsert for the current user (create or update)
+        const deviceToken = await prisma.deviceToken.upsert({
+            where: { token },
+            update: {
+                userId: session.userId,
+                platform,
+                isActive: true,
+                deviceInfo: deviceInfo ?? undefined,
+                lastUsed: new Date(),
+            },
+            create: {
                 userId: session.userId,
                 token,
                 platform,
-                deviceInfo: deviceInfo || undefined,
+                isActive: true,
+                deviceInfo: deviceInfo ?? undefined,
             },
         });
 
+        console.log('[POST /api/devices] Token saved — id:', deviceToken.id, '| userId:', deviceToken.userId);
+
+        const isNew = !existingToken || existingToken.userId !== session.userId;
         return successResponse(
             {
                 deviceToken: {
@@ -81,11 +86,15 @@ export async function POST(request: NextRequest) {
                     isActive: deviceToken.isActive,
                     lastUsed: deviceToken.lastUsed.toISOString(),
                 },
-                message: 'Device registered successfully',
+                message: isNew ? 'Device registered successfully' : 'Device token updated successfully',
             },
-            201
+            isNew ? 201 : 200
         );
-    } catch (error) {
+    } catch (error: any) {
+        // Log full error so silent DB failures are visible in server logs
+        console.error('[POST /api/devices] ERROR:', error?.message || error);
+        console.error('[POST /api/devices] Prisma code:', error?.code);
+        console.error('[POST /api/devices] Stack:', error?.stack);
         return handleApiError(error);
     }
 }

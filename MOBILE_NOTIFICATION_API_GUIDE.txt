@@ -1,62 +1,5 @@
-================================================================================
-SPENTICA CHEMICALS — MOBILE NOTIFICATION API INTEGRATION GUIDE
-Step-by-Step Instructions for Consuming APIs & Sending Notifications to Mobile
-================================================================================
 
-BASE URL:
-- Local Development: http://localhost:3000 (or your machine IP: http://192.168.x.x:3000)
-- Production:        https://your-domain.com
 
-TABLE OF CONTENTS:
-1. Architecture & Workflow Overview
-2. Step 1: Mobile User Login (Obtaining Auth Token)
-3. Step 2: Registering Mobile Device Token (FCM / APNs)
-4. Step 3: Triggering Push Notifications (Automated & Manual API)
-5. Step 4: Fetching In-App Notifications & Unread Badge Count
-6. Step 5: Marking Notifications as Read on Mobile
-7. Step 6: Managing Mobile Notification Preferences
-8. Step 7: Unregistering Device Token on Logout
-9. Complete Code Examples:
-   - cURL Examples (Testing via Terminal / Postman)
-   - React Native (JavaScript / TypeScript)
-   - Flutter (Dart)
-10. Production Setup Checklist (Firebase FCM / Apple APNs)
-
-================================================================================
-1. ARCHITECTURE & WORKFLOW OVERVIEW
-================================================================================
-
-The notification system consists of two communication channels:
-  A) Push Notifications: Delivered directly to the phone's lock screen & notification
-     tray via Apple APNs (iOS) or Google Firebase Cloud Messaging (Android).
-  B) In-App Notification Feed: The notification center/bell icon inside the app showing
-     history, read/unread status, document links, and badge counters.
-
-LIFECYCLE:
-  1. Mobile App logs in using email & password -> receives JWT Bearer Token.
-  2. Mobile App retrieves FCM/APNs push token from the operating system.
-  3. Mobile App calls POST /api/devices with Bearer Token + Device Push Token.
-  4. When an Admin uploads a COA PDF, publishes News, or sends an alert:
-     - Backend creates In-App Notification records in database.
-     - Backend queries active device tokens for the recipient distributor/user.
-     - Backend pushes payload to Apple APNs / Firebase FCM -> User phone rings/vibrates.
-  5. Mobile App fetches notification list via GET /api/notifications.
-  6. When user taps notification, Mobile App calls POST /api/notifications/mark-read.
-
-================================================================================
-2. STEP 1: MOBILE USER LOGIN (OBTAINING AUTH TOKEN)
-================================================================================
-
-All protected endpoints require an Authorization Bearer token header:
-  Authorization: Bearer <YOUR_JWT_TOKEN>
-
-ENDPOINT:
-  POST /api/auth/login
-
-HEADERS:
-  Content-Type: application/json
-
-REQUEST BODY:
 {
   "email": "distributor@example.com",
   "password": "Password123!"
@@ -582,3 +525,4 @@ To ensure physical mobile devices receive lock-screen push alerts:
 ================================================================================
 End of Guide — Spentica Chemicals API Documentation
 ================================================================================
+
