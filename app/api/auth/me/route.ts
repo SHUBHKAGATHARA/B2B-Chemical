@@ -5,22 +5,30 @@ import { requireAuth } from '@/lib/auth/session';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// CORS headers for mobile app support
-const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-};
+// CORS helper — reflects request origin so cookies work with credentials:include
+function getCorsHeaders(requestOrigin?: string | null): Record<string, string> {
+    const allowedOrigin =
+        requestOrigin ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        'http://localhost:3000';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        'Access-Control-Allow-Credentials': 'true',
+    };
+}
 
 // Handle preflight requests for mobile apps
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
     return new NextResponse(null, {
         status: 204,
-        headers: CORS_HEADERS,
+        headers: getCorsHeaders(request.headers.get('origin')),
     });
 }
 
 export async function GET(request: NextRequest) {
+    const corsHeaders = getCorsHeaders(request.headers.get('origin'));
     try {
         const session = await requireAuth();
 
@@ -41,7 +49,7 @@ export async function GET(request: NextRequest) {
             },
             { 
                 status: 200,
-                headers: CORS_HEADERS,
+                headers: corsHeaders,
             }
         );
     } catch (error: any) {
@@ -55,7 +63,7 @@ export async function GET(request: NextRequest) {
             },
             { 
                 status: 401,
-                headers: CORS_HEADERS,
+                headers: corsHeaders,
             }
         );
     }

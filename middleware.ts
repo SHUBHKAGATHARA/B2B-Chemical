@@ -19,21 +19,29 @@ const PUBLIC_PAGE_ROUTES = [
     '/news',
 ];
 
-// CORS headers for mobile app support
-const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-    'Access-Control-Max-Age': '86400',
-};
+// CORS helper — reflects the request origin so that browsers accept cookies
+// when credentials:include is used. A wildcard '*' would silently block cookies.
+function getCorsHeaders(requestOrigin?: string | null): Record<string, string> {
+    const allowedOrigin =
+        requestOrigin ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        'http://localhost:3000';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400',
+    };
+}
 
 /**
  * Create a JSON response with CORS headers for mobile apps
  */
-function createApiResponse(body: object, status: number) {
+function createApiResponse(body: object, status: number, requestOrigin?: string | null) {
     return NextResponse.json(body, {
         status,
-        headers: CORS_HEADERS,
+        headers: getCorsHeaders(requestOrigin),
     });
 }
 
@@ -76,7 +84,7 @@ export async function middleware(request: NextRequest) {
     if (request.method === 'OPTIONS') {
         return new NextResponse(null, {
             status: 204,
-            headers: CORS_HEADERS,
+            headers: getCorsHeaders(request.headers.get('origin')),
         });
     }
     
@@ -88,7 +96,8 @@ export async function middleware(request: NextRequest) {
     if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
         const response = NextResponse.next();
         if (pathname.startsWith('/api')) {
-            Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+            const corsHeaders = getCorsHeaders(request.headers.get('origin'));
+            Object.entries(corsHeaders).forEach(([key, value]) => {
                 response.headers.set(key, value);
             });
         }
@@ -103,7 +112,8 @@ export async function middleware(request: NextRequest) {
     // 3. Handle Public API Routes (GET only - e.g. GET /api/news, GET /api/news/[id])
     if (isPublicApiRoute(pathname, request.method)) {
         const response = NextResponse.next();
-        Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+        const corsHeaders = getCorsHeaders(request.headers.get('origin'));
+        Object.entries(corsHeaders).forEach(([key, value]) => {
             response.headers.set(key, value);
         });
         return response;
@@ -121,7 +131,8 @@ export async function middleware(request: NextRequest) {
                         code: 'UNAUTHORIZED' 
                     } 
                 },
-                401
+                401,
+                request.headers.get('origin')
             );
         }
         // If it's a page navigation, redirect to login
@@ -136,7 +147,8 @@ export async function middleware(request: NextRequest) {
         const response = NextResponse.next();
         // Add CORS headers to all API responses for mobile apps
         if (pathname.startsWith('/api')) {
-            Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+            const corsHeaders = getCorsHeaders(request.headers.get('origin'));
+            Object.entries(corsHeaders).forEach(([key, value]) => {
                 response.headers.set(key, value);
             });
         }
@@ -156,7 +168,8 @@ export async function middleware(request: NextRequest) {
                         code: isExpired ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN' 
                     } 
                 },
-                401
+                401,
+                request.headers.get('origin')
             );
         }
 

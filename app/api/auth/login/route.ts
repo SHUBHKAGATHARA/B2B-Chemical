@@ -10,22 +10,35 @@ import {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// CORS headers for mobile app support
-const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-};
+// Allowed origins for CORS (mobile apps + web)
+// NOTE: Wildcard '*' cannot be used with credentials:include (cookies).
+// We reflect the request origin for trusted clients, falling back to the app URL.
+function getCorsHeaders(requestOrigin?: string | null): Record<string, string> {
+    const allowedOrigin =
+        requestOrigin ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        'http://localhost:3000';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        'Access-Control-Allow-Credentials': 'true',
+    };
+}
 
 // Handle preflight requests for mobile apps
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
+    const origin = request.headers.get('origin');
     return new NextResponse(null, {
         status: 204,
-        headers: CORS_HEADERS,
+        headers: getCorsHeaders(origin),
     });
 }
 
 export async function POST(request: NextRequest) {
+    const origin = request.headers.get('origin');
+    const corsHeaders = getCorsHeaders(origin);
+
     try {
         const body = await request.json();
         console.log('[Login] Attempting login for:', body.email);
@@ -34,20 +47,22 @@ export async function POST(request: NextRequest) {
 
         const cookie = buildAuthCookie(result.token);
 
-        // Build Set-Cookie header manually for better control
-        // Build Set-Cookie header manually
-        // We REMOVE Max-Age and Expires to make this a Session Cookie
-        // The browser will delete it when the session ends (browser closed)
+        // Build Set-Cookie header with MaxAge so the token persists across page reloads.
+        // Without MaxAge/Expires the browser treats it as a session cookie and drops it
+        // on a hard reload (window.location.href), which is why the middleware could not
+        // find the token after the post-login redirect.
         const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+        const maxAge = 60 * 60 * 24 * 7; // 7 days, matches JWT expiry
         const cookieHeader = [
             `${cookie.name}=${cookie.value}`,
             `Path=/`,
+            `Max-Age=${maxAge}`,
             `SameSite=Lax`,
             cookie.options.httpOnly ? 'HttpOnly' : '',
             isProduction ? 'Secure' : '',
         ].filter(Boolean).join('; ');
 
-        console.log('[Login] Setting session cookie (no stats/persist)', { isProduction });
+        console.log('[Login] Setting persistent auth cookie', { isProduction, maxAge });
 
         const response = NextResponse.json(
             {
@@ -65,7 +80,7 @@ export async function POST(request: NextRequest) {
                 status: 200,
                 headers: {
                     'Set-Cookie': cookieHeader,
-                    ...CORS_HEADERS,
+                    ...corsHeaders,
                 },
             }
         );
@@ -85,7 +100,7 @@ export async function POST(request: NextRequest) {
                 },
                 { 
                     status: error.status,
-                    headers: CORS_HEADERS,
+                    headers: corsHeaders,
                 }
             );
         }
@@ -127,7 +142,7 @@ export async function POST(request: NextRequest) {
             },
             { 
                 status: 500,
-                headers: CORS_HEADERS,
+                headers: corsHeaders,
             }
         );
     }
