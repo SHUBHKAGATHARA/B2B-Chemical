@@ -2,6 +2,8 @@
 // Supports PDF, NEWS, and SYSTEM notification types
 
 import { prisma } from '@/lib/db';
+import { initFirebaseAdmin } from '@/lib/firebase-admin';
+import { getApps } from 'firebase-admin/app';
 
 // ============================================
 // Types
@@ -271,33 +273,26 @@ export async function sendNotificationToAll(pdfId: string): Promise<void> {
 }
 
 // ============================================
-// Push Notification Service (Stub for Future)
+// Push Notification Service (Real FCM)
 // ============================================
 
 /**
- * Send push notification via FCM/APNs
- * This is a stub that will be implemented when mobile apps are ready
+ * Send a push notification to a single user via FCM.
+ * Fetches only that user's active device tokens, calls Firebase,
+ * and deactivates any stale tokens that FCM reports as invalid.
  */
 export async function sendPushNotification(
     userId: string,
     payload: NotificationPayload
 ): Promise<PushNotificationResult> {
-    // TODO: Implement FCM/APNs integration
-    console.log('[PUSH STUB] Would send push notification:', {
-        userId,
-        payload,
+    // 1. Fetch this user's active device tokens
+    const deviceTokenRows = await prisma.deviceToken.findMany({
+        where: { userId, isActive: true },
+        select: { id: true, token: true },
     });
 
-    // Get user's device tokens
-    const deviceTokens = await prisma.deviceToken.findMany({
-        where: {
-            userId,
-            isActive: true,
-        },
-    });
-
-    if (deviceTokens.length === 0) {
-        // Log the attempt
+    if (deviceTokenRows.length === 0) {
+        console.log(`[PUSH] No active device tokens for user ${userId}`);
         try {
             await prisma.pushNotificationLog.create({
                 data: {
@@ -309,17 +304,78 @@ export async function sendPushNotification(
                     error: 'No active device tokens found',
                 },
             });
-        } catch (logError) {
-            console.error('[PUSH] Failed to log push notification attempt:', logError);
+        } catch (logErr) {
+            console.error('[PUSH] Failed to write push log:', logErr);
         }
-
-        return {
-            success: false,
-            error: 'No active device tokens found',
-        };
+        return { success: false, error: 'No active device tokens found' };
     }
 
-    // Log success (stub — not actually sent)
+    // 2. Ensure Firebase Admin is initialised
+    initFirebaseAdmin();
+    if (getApps().length === 0) {
+        console.error('[PUSH] Firebase Admin not initialized — cannot send notification');
+        return { success: false, error: 'Firebase Admin not initialized' };
+    }
+
+    // 3. Send via the shared firebase-admin helper
+    //    fcmSendToAllTokens broadcasts to every token in the DB; here we
+    //    temporarily narrow it by deactivating other users' tokens, OR we
+    //    call the Firebase Messaging API directly for just these tokens.
+    //    For simplicity and correctness we use the firebase-admin messaging API directly.
+    const { getMessaging } = await import('firebase-admin/messaging');
+    const tokens = deviceTokenRows.map((r) => r.token);
+
+    // Stringify data values — FCM requires Record<string, string>
+    const stringData: Record<string, string> = {};
+    if (payload.data) {
+        for (const [k, v] of Object.entries(payload.data)) {
+            stringData[k] = String(v);
+        }
+    }
+
+    let fcmResult: { success: boolean; messageId?: string; error?: string };
+    try {
+        const response = await getMessaging().sendEachForMulticast({
+            tokens,
+            notification: { title: payload.title, body: payload.body },
+            data: stringData,
+            android: { priority: 'high' },
+            apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+        });
+
+        // Deactivate tokens that FCM says are invalid
+        const invalidTokenIds: string[] = [];
+        response.responses.forEach((resp, idx) => {
+            if (!resp.success) {
+                const code = resp.error?.code || '';
+                if (
+                    code === 'messaging/invalid-registration-token' ||
+                    code === 'messaging/registration-token-not-registered'
+                ) {
+                    invalidTokenIds.push(deviceTokenRows[idx].id);
+                }
+                console.warn(`[PUSH] FCM error for token[${idx}]:`, code, resp.error?.message);
+            }
+        });
+
+        if (invalidTokenIds.length > 0) {
+            await prisma.deviceToken.updateMany({
+                where: { id: { in: invalidTokenIds } },
+                data: { isActive: false },
+            });
+            console.log(`[PUSH] Deactivated ${invalidTokenIds.length} stale token(s) for user ${userId}`);
+        }
+
+        const successCount = response.successCount;
+        fcmResult = successCount > 0
+            ? { success: true, messageId: `fcm_${Date.now()}` }
+            : { success: false, error: `All ${tokens.length} token(s) failed` };
+    } catch (err: any) {
+        console.error('[PUSH] FCM sendEachForMulticast error:', err.message || err);
+        fcmResult = { success: false, error: err.message || 'FCM error' };
+    }
+
+    // 4. Write audit log
     try {
         await prisma.pushNotificationLog.create({
             data: {
@@ -327,21 +383,19 @@ export async function sendPushNotification(
                 title: payload.title,
                 body: payload.body,
                 data: payload.data ?? undefined,
-                status: 'success',
+                status: fcmResult.success ? 'success' : 'failed',
+                error: fcmResult.error ?? null,
             },
         });
-    } catch (logError) {
-        console.error('[PUSH] Failed to log push notification:', logError);
+    } catch (logErr) {
+        console.error('[PUSH] Failed to write push log:', logErr);
     }
 
-    return {
-        success: true,
-        messageId: `stub_${Date.now()}`,
-    };
+    return fcmResult;
 }
 
 /**
- * Send push notification to multiple users — does NOT throw on failure
+ * Send push notification to multiple users — does NOT throw on failure.
  */
 export async function sendBulkPushNotifications(
     userIds: string[],
@@ -350,7 +404,6 @@ export async function sendBulkPushNotifications(
     const results = await Promise.allSettled(
         userIds.map((userId) => sendPushNotification(userId, payload))
     );
-
     return results.map((r) =>
         r.status === 'fulfilled' ? r.value : { success: false, error: String(r.reason) }
     );

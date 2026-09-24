@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth/session';
 import { registerDeviceSchema } from '@/lib/validations/schemas';
@@ -12,14 +12,57 @@ import {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// ---------------------------------------------------------------------------
+// CORS helpers — mobile apps (Flutter) need these on every route
+// NOTE: wildcard '*' cannot be used with credentials. We reflect the origin.
+// ---------------------------------------------------------------------------
+function getCorsHeaders(requestOrigin?: string | null): Record<string, string> {
+    const allowedOrigin =
+        requestOrigin ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        'http://localhost:3000';
+    return {
+        'Access-Control-Allow-Origin': allowedOrigin,
+        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        'Access-Control-Allow-Credentials': 'true',
+    };
+}
+
+// Handle CORS preflight so Flutter / native HTTP clients don't get blocked
+export async function OPTIONS(request: NextRequest) {
+    const origin = request.headers.get('origin');
+    return new NextResponse(null, {
+        status: 204,
+        headers: getCorsHeaders(origin),
+    });
+}
+
 
 // POST - Register device token for push notifications
 export async function POST(request: NextRequest) {
+    const origin = request.headers.get('origin');
+    const corsHeaders = getCorsHeaders(origin);
+
     try {
         const session = await getSession();
         if (!session) {
-            console.warn('[POST /api/devices] No session — returning 401');
-            return ErrorResponses.unauthorized();
+            // ---------------------------------------------------------------
+            // ROOT CAUSE LOG: If the Flutter app gets a 200 but nothing saves,
+            // it means it is hitting this 401 branch.
+            // Fix: send `Authorization: Bearer <jwt>` header in the Flutter
+            // HTTP request (the JWT is returned by POST /api/auth/login).
+            // ---------------------------------------------------------------
+            const authHeader = request.headers.get('authorization');
+            console.warn(
+                '[POST /api/devices] No session — returning 401.',
+                'Authorization header present:', !!authHeader,
+                '| Value (first 20 chars):', authHeader?.substring(0, 20) ?? 'none',
+            );
+            return new NextResponse(
+                JSON.stringify({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required. Send Authorization: Bearer <token> header.' } }),
+                { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+            );
         }
 
         const body = await request.json();
@@ -78,24 +121,34 @@ export async function POST(request: NextRequest) {
         console.log('[POST /api/devices] Token saved — id:', deviceToken.id, '| userId:', deviceToken.userId);
 
         const isNew = !existingToken || existingToken.userId !== session.userId;
-        return successResponse(
-            {
-                deviceToken: {
-                    id: deviceToken.id,
-                    platform: deviceToken.platform,
-                    isActive: deviceToken.isActive,
-                    lastUsed: deviceToken.lastUsed.toISOString(),
+        return new NextResponse(
+            JSON.stringify({
+                success: true,
+                data: {
+                    deviceToken: {
+                        id: deviceToken.id,
+                        platform: deviceToken.platform,
+                        isActive: deviceToken.isActive,
+                        lastUsed: deviceToken.lastUsed.toISOString(),
+                    },
+                    message: isNew ? 'Device registered successfully' : 'Device token updated successfully',
                 },
-                message: isNew ? 'Device registered successfully' : 'Device token updated successfully',
+                meta: { timestamp: new Date().toISOString() },
+            }),
+            {
+                status: isNew ? 201 : 200,
+                headers: { 'Content-Type': 'application/json', ...corsHeaders },
             },
-            isNew ? 201 : 200
         );
     } catch (error: any) {
         // Log full error so silent DB failures are visible in server logs
         console.error('[POST /api/devices] ERROR:', error?.message || error);
         console.error('[POST /api/devices] Prisma code:', error?.code);
         console.error('[POST /api/devices] Stack:', error?.stack);
-        return handleApiError(error);
+        return new NextResponse(
+            JSON.stringify({ success: false, error: { code: 'INTERNAL_ERROR', message: error?.message || 'Internal server error' } }),
+            { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        );
     }
 }
 
