@@ -278,30 +278,37 @@ export async function sendNotificationToAll(pdfId: string): Promise<void> {
 
 /**
  * Send a push notification to a single user via FCM.
- * Fetches only that user's active device tokens, calls Firebase,
+ * Fetches ALL active device tokens for that user, sends to every device,
  * and deactivates any stale tokens that FCM reports as invalid.
+ *
+ * This correctly handles multi-device: if User 123 has Device A, B, C
+ * all three receive the notification.
  */
 export async function sendPushNotification(
     userId: string,
     payload: NotificationPayload
 ): Promise<PushNotificationResult> {
-    // 1. Fetch this user's active device tokens
+    /** Mask FCM token for safe logging */
+    const maskToken = (t: string) =>
+        t.length > 12 ? `${t.substring(0, 8)}****${t.substring(t.length - 4)}` : '****';
+
+    // 1. Fetch all active device tokens for this user (multi-device support)
     const deviceTokenRows = await prisma.deviceToken.findMany({
-        where: { userId, isActive: true },
-        select: { id: true, token: true },
+        where:  { userId, isActive: true },
+        select: { id: true, token: true, deviceId: true, platform: true },
     });
 
     if (deviceTokenRows.length === 0) {
-        console.log(`[PUSH] No active device tokens for user ${userId}`);
+        console.log(`[PUSH] No active device tokens for userId=${userId}`);
         try {
             await prisma.pushNotificationLog.create({
                 data: {
                     userId,
-                    title: payload.title,
-                    body: payload.body,
-                    data: payload.data ?? undefined,
+                    title:  payload.title,
+                    body:   payload.body,
+                    data:   payload.data ?? undefined,
                     status: 'failed',
-                    error: 'No active device tokens found',
+                    error:  'No active device tokens found',
                 },
             });
         } catch (logErr) {
@@ -309,6 +316,12 @@ export async function sendPushNotification(
         }
         return { success: false, error: 'No active device tokens found' };
     }
+
+    console.log(
+        `[PUSH] Sending "${payload.title}" to userId=${userId}`,
+        `| ${deviceTokenRows.length} device(s):`,
+        deviceTokenRows.map((r) => `${r.platform}:${r.deviceId ?? 'legacy'}:${maskToken(r.token)}`).join(', '),
+    );
 
     // 2. Ensure Firebase Admin is initialised
     initFirebaseAdmin();

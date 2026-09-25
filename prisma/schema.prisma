@@ -187,19 +187,27 @@ enum Platform {
 }
 
 model DeviceToken {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  platform  Platform
-  isActive  Boolean  @default(true)
-  deviceInfo Json?   // {model, osVersion, appVersion}
-  createdAt DateTime @default(now())
-  lastUsed  DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  deviceId   String   // Unique hardware/app device identifier (e.g. Android ID, IDFV, UUID)
+  token      String   // FCM registration token — changes on refresh/reinstall
+  platform   Platform
+  deviceName String?  // e.g. "Samsung Galaxy S23"
+  appVersion String?  // e.g. "1.0.0"
+  isActive   Boolean  @default(true)
+  deviceInfo Json?    // {model, osVersion, appVersion} — legacy/extra metadata
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  lastUsed   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  // A single user+device combo must be unique (one active row per physical device per user)
+  @@unique([userId, deviceId])
+  // Allow fast lookup by FCM token (for invalid-token cleanup after send)
   @@index([token])
+  @@index([userId])
+  @@index([userId, isActive])
   @@map("device_tokens")
 }
 

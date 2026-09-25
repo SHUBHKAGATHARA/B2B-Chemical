@@ -104,7 +104,7 @@ export async function sendPushNotification(
         // Fetch all active device tokens from database
         const deviceTokens = await prisma.deviceToken.findMany({
             where: { isActive: true },
-            select: { token: true },
+            select: { token: true, deviceId: true, platform: true },
         });
 
         if (!deviceTokens || deviceTokens.length === 0) {
@@ -114,8 +114,7 @@ export async function sendPushNotification(
 
         // Deduplicate tokens
         const tokens = Array.from(new Set(deviceTokens.map((d) => d.token).filter(Boolean)));
-
-        console.log(`[FCM] Sending push notification to ${tokens.length} device(s): "${title}"`);
+        console.log(`[FCM] Sending "${title}" to ${tokens.length} device(s) across all users`);
 
         // Firebase sendEachForMulticast accepts max 500 tokens per call
         const batchSize = 500;

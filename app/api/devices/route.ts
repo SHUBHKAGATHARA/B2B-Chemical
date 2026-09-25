@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth/session';
-import { registerDeviceSchema } from '@/lib/validations/schemas';
+import { registerDeviceSchema, unregisterDeviceSchema } from '@/lib/validations/schemas';
 import {
     successResponse,
     ErrorResponses,
@@ -29,6 +29,12 @@ function getCorsHeaders(requestOrigin?: string | null): Record<string, string> {
     };
 }
 
+/** Mask a FCM token for safe logging: show first 8 and last 4 chars */
+function maskToken(token: string): string {
+    if (token.length <= 12) return '****';
+    return `${token.substring(0, 8)}****${token.substring(token.length - 4)}`;
+}
+
 // Handle CORS preflight so Flutter / native HTTP clients don't get blocked
 export async function OPTIONS(request: NextRequest) {
     const origin = request.headers.get('origin');
@@ -38,8 +44,19 @@ export async function OPTIONS(request: NextRequest) {
     });
 }
 
-
-// POST - Register device token for push notifications
+// ---------------------------------------------------------------------------
+// POST /api/devices — Register or update a device FCM token
+//
+// Key design decisions:
+//   • We upsert on (userId, deviceId) — NOT on token.
+//     → Same device refreshing its FCM token updates ONE row.
+//     → Same user on two phones creates TWO rows.
+//   • If another user previously registered the same deviceId,
+//     we reassign it to the current authenticated user.
+//   • IsActive is always set to true on register (handles re-login after logout).
+//   • The FCM token is updated separately if the device already exists
+//     and the token has changed.
+// ---------------------------------------------------------------------------
 export async function POST(request: NextRequest) {
     const origin = request.headers.get('origin');
     const corsHeaders = getCorsHeaders(origin);
@@ -47,12 +64,6 @@ export async function POST(request: NextRequest) {
     try {
         const session = await getSession();
         if (!session) {
-            // ---------------------------------------------------------------
-            // ROOT CAUSE LOG: If the Flutter app gets a 200 but nothing saves,
-            // it means it is hitting this 401 branch.
-            // Fix: send `Authorization: Bearer <jwt>` header in the Flutter
-            // HTTP request (the JWT is returned by POST /api/auth/login).
-            // ---------------------------------------------------------------
             const authHeader = request.headers.get('authorization');
             console.warn(
                 '[POST /api/devices] No session — returning 401.',
@@ -60,16 +71,20 @@ export async function POST(request: NextRequest) {
                 '| Value (first 20 chars):', authHeader?.substring(0, 20) ?? 'none',
             );
             return new NextResponse(
-                JSON.stringify({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required. Send Authorization: Bearer <token> header.' } }),
+                JSON.stringify({
+                    success: false,
+                    error: {
+                        code: 'UNAUTHORIZED',
+                        message: 'Authentication required. Send Authorization: Bearer <token> header.',
+                    },
+                }),
                 { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
             );
         }
 
         const body = await request.json();
-        console.log('[POST /api/devices] Body received:', JSON.stringify(body));
         console.log('[POST /api/devices] Session userId:', session.userId);
 
-        // Validate input
         const validation = registerDeviceSchema.safeParse(body);
         if (!validation.success) {
             console.warn('[POST /api/devices] Zod validation FAILED:', JSON.stringify(validation.error.errors));
@@ -79,57 +94,100 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { token, platform, deviceInfo } = validation.data;
-        console.log('[POST /api/devices] Validated — token length:', token.length, '| platform:', platform);
+        const { fcmToken, token: legacyToken, deviceId, platform, deviceName, appVersion, deviceInfo } = validation.data;
 
-        // Upsert: if this exact token already belongs to this user → update it.
-        // If it belongs to a DIFFERENT user (e.g. shared test token) → delete old, create new.
-        // This fixes the bug where GET /api/devices returned [] because the token was
-        // stored under a different userId after being "updated" by the old code.
-        const existingToken = await prisma.deviceToken.findUnique({
-            where: { token },
+        // Resolve the actual FCM token (support both field names)
+        const resolvedFcmToken = (fcmToken || legacyToken)!;
+
+        console.log(
+            '[POST /api/devices] Registering device —',
+            '| userId:', session.userId,
+            '| deviceId:', deviceId,
+            '| platform:', platform,
+            '| fcmToken:', maskToken(resolvedFcmToken),
+        );
+
+        // -----------------------------------------------------------------
+        // Race condition fix: If this deviceId is registered to a DIFFERENT
+        // user (e.g. another account logged into the same phone), deactivate
+        // the old association. We cannot let User A's device receive User B's
+        // notifications after a shared phone re-login.
+        // -----------------------------------------------------------------
+        const existingByDevice = await prisma.deviceToken.findFirst({
+            where: { deviceId },
         });
 
-        if (existingToken) {
-            if (existingToken.userId !== session.userId) {
-                // Token was registered by a different user — delete it so we can re-create
-                // under the current user. (Common with test tokens like "fcm_token_here")
-                console.log('[POST /api/devices] Token belongs to different user — reassigning to current user');
-                await prisma.deviceToken.delete({ where: { token } });
-            }
+        if (existingByDevice && existingByDevice.userId !== session.userId) {
+            console.log(
+                '[POST /api/devices] Device', deviceId,
+                'was owned by userId', existingByDevice.userId,
+                '— deactivating old association before reassigning to', session.userId,
+            );
+            await prisma.deviceToken.update({
+                where: { id: existingByDevice.id },
+                data: { isActive: false },
+            });
         }
 
-        // Upsert for the current user (create or update)
+        // -----------------------------------------------------------------
+        // Upsert on (userId, deviceId) — the stable composite key.
+        // This handles:
+        //   • New device registration → creates row
+        //   • FCM token refresh on existing device → updates token
+        //   • Re-login after logout → sets isActive = true again
+        //   • Redundant call with same token → updates lastUsed only
+        // -----------------------------------------------------------------
+        const now = new Date();
         const deviceToken = await prisma.deviceToken.upsert({
-            where: { token },
+            where: {
+                userId_deviceId: {
+                    userId: session.userId,
+                    deviceId,
+                },
+            },
             update: {
-                userId: session.userId,
+                token:      resolvedFcmToken,
                 platform,
-                isActive: true,
-                deviceInfo: deviceInfo ?? undefined,
-                lastUsed: new Date(),
+                isActive:   true,
+                lastUsed:   now,
+                ...(deviceName   && { deviceName }),
+                ...(appVersion   && { appVersion }),
+                ...(deviceInfo   && { deviceInfo }),
             },
             create: {
-                userId: session.userId,
-                token,
+                userId:     session.userId,
+                deviceId,
+                token:      resolvedFcmToken,
                 platform,
-                isActive: true,
+                isActive:   true,
+                lastUsed:   now,
+                deviceName: deviceName ?? null,
+                appVersion: appVersion ?? null,
                 deviceInfo: deviceInfo ?? undefined,
             },
         });
 
-        console.log('[POST /api/devices] Token saved — id:', deviceToken.id, '| userId:', deviceToken.userId);
+        const isNew = !existingByDevice || existingByDevice.userId !== session.userId;
+        const action = isNew ? 'Device registered' : 'Device token updated';
 
-        const isNew = !existingToken || existingToken.userId !== session.userId;
+        console.log(
+            `[POST /api/devices] ${action} —`,
+            '| id:', deviceToken.id,
+            '| userId:', deviceToken.userId,
+            '| deviceId:', deviceId,
+            '| platform:', platform,
+        );
+
         return new NextResponse(
             JSON.stringify({
                 success: true,
                 data: {
                     deviceToken: {
-                        id: deviceToken.id,
-                        platform: deviceToken.platform,
-                        isActive: deviceToken.isActive,
-                        lastUsed: deviceToken.lastUsed.toISOString(),
+                        id:        deviceToken.id,
+                        deviceId,
+                        platform:  deviceToken.platform,
+                        isActive:  deviceToken.isActive,
+                        lastUsed:  deviceToken.lastUsed.toISOString(),
                     },
                     message: isNew ? 'Device registered successfully' : 'Device token updated successfully',
                 },
@@ -141,10 +199,107 @@ export async function POST(request: NextRequest) {
             },
         );
     } catch (error: any) {
-        // Log full error so silent DB failures are visible in server logs
         console.error('[POST /api/devices] ERROR:', error?.message || error);
         console.error('[POST /api/devices] Prisma code:', error?.code);
         console.error('[POST /api/devices] Stack:', error?.stack);
+        return new NextResponse(
+            JSON.stringify({
+                success: false,
+                error: { code: 'INTERNAL_ERROR', message: error?.message || 'Internal server error' },
+            }),
+            { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// DELETE /api/devices — Soft-deactivate device on logout
+//
+// We set IsActive = false instead of deleting the row.
+// This prevents accidental loss of other devices belonging to the same user.
+// On next login, the POST endpoint reactivates the device.
+//
+// Accepts:
+//   Body JSON: { "deviceId": "...", "token": "..." (optional legacy) }
+//   OR Query param: ?token=<fcm_token>  (backward compat with old guide)
+// ---------------------------------------------------------------------------
+export async function DELETE(request: NextRequest) {
+    const origin = request.headers.get('origin');
+    const corsHeaders = getCorsHeaders(origin);
+
+    try {
+        const session = await getSession();
+        if (!session) {
+            return new NextResponse(
+                JSON.stringify({ success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }),
+                { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+            );
+        }
+
+        // Support JSON body (new) or query param (legacy)
+        let deviceId: string | null = null;
+        let legacyToken: string | null = null;
+
+        try {
+            const body = await request.json();
+            deviceId    = body?.deviceId || null;
+            legacyToken = body?.token || null;
+        } catch {
+            // no JSON body — fall through to query param
+        }
+
+        if (!deviceId) {
+            const { searchParams } = new URL(request.url);
+            legacyToken = legacyToken || searchParams.get('token');
+        }
+
+        if (!deviceId && !legacyToken) {
+            return new NextResponse(
+                JSON.stringify({ success: false, error: { code: 'VALIDATION_ERROR', message: 'deviceId (or token) is required' } }),
+                { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+            );
+        }
+
+        let updatedCount = 0;
+
+        if (deviceId) {
+            // Preferred: deactivate by (userId, deviceId)
+            const result = await prisma.deviceToken.updateMany({
+                where: { userId: session.userId, deviceId },
+                data:  { isActive: false, lastUsed: new Date() },
+            });
+            updatedCount = result.count;
+            console.log(
+                '[DELETE /api/devices] Deactivated device',
+                '| userId:', session.userId,
+                '| deviceId:', deviceId,
+                '| rows:', updatedCount,
+            );
+        } else if (legacyToken) {
+            // Backward compat: deactivate by token
+            const result = await prisma.deviceToken.updateMany({
+                where: { userId: session.userId, token: legacyToken },
+                data:  { isActive: false, lastUsed: new Date() },
+            });
+            updatedCount = result.count;
+            console.log(
+                '[DELETE /api/devices] Deactivated device by token',
+                '| userId:', session.userId,
+                '| maskedToken:', maskToken(legacyToken),
+                '| rows:', updatedCount,
+            );
+        }
+
+        return new NextResponse(
+            JSON.stringify({
+                success: true,
+                data: { message: 'Device deactivated successfully' },
+                meta: { timestamp: new Date().toISOString() },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
+        );
+    } catch (error: any) {
+        console.error('[DELETE /api/devices] ERROR:', error?.message || error);
         return new NextResponse(
             JSON.stringify({ success: false, error: { code: 'INTERNAL_ERROR', message: error?.message || 'Internal server error' } }),
             { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
@@ -152,39 +307,13 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// DELETE - Remove device token (logout)
-export async function DELETE(request: NextRequest) {
-    try {
-        const session = await getSession();
-        if (!session) {
-            return ErrorResponses.unauthorized();
-        }
-
-        const { searchParams } = new URL(request.url);
-        const token = searchParams.get('token');
-
-        if (!token) {
-            return ErrorResponses.validation('Token is required', undefined, 'token');
-        }
-
-        // Deactivate or delete the token
-        await prisma.deviceToken.deleteMany({
-            where: {
-                userId: session.userId,
-                token,
-            },
-        });
-
-        return successResponse({
-            message: 'Device token removed successfully',
-        });
-    } catch (error) {
-        return handleApiError(error);
-    }
-}
-
-// GET - List user's device tokens
+// ---------------------------------------------------------------------------
+// GET /api/devices — List active devices for the authenticated user
+// ---------------------------------------------------------------------------
 export async function GET(request: NextRequest) {
+    const origin = request.headers.get('origin');
+    const corsHeaders = getCorsHeaders(origin);
+
     try {
         const session = await getSession();
         if (!session) {
@@ -193,28 +322,32 @@ export async function GET(request: NextRequest) {
 
         const deviceTokens = await prisma.deviceToken.findMany({
             where: {
-                userId: session.userId,
+                userId:   session.userId,
                 isActive: true,
             },
             select: {
-                id: true,
-                platform: true,
-                isActive: true,
-                lastUsed: true,
-                createdAt: true,
+                id:         true,
+                deviceId:   true,
+                platform:   true,
+                deviceName: true,
+                appVersion: true,
+                isActive:   true,
+                lastUsed:   true,
+                createdAt:  true,
             },
-            orderBy: {
-                lastUsed: 'desc',
-            },
+            orderBy: { lastUsed: 'desc' },
         });
 
         return successResponse({
             deviceTokens: deviceTokens.map((dt) => ({
-                id: dt.id,
-                platform: dt.platform,
-                isActive: dt.isActive,
-                lastUsed: dt.lastUsed.toISOString(),
-                createdAt: dt.createdAt.toISOString(),
+                id:         dt.id,
+                deviceId:   dt.deviceId,
+                platform:   dt.platform,
+                deviceName: dt.deviceName,
+                appVersion: dt.appVersion,
+                isActive:   dt.isActive,
+                lastUsed:   dt.lastUsed.toISOString(),
+                createdAt:  dt.createdAt.toISOString(),
             })),
         });
     } catch (error) {

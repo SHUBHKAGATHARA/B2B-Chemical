@@ -49,20 +49,38 @@ export const paginationSchema = z.object({
 });
 
 // Device token schemas
+// Accepts both `token` (legacy /api/devices) and `fcmToken` (new /api/notifications/register-device)
 export const registerDeviceSchema = z.object({
-    token: z.string().min(1, 'Token is required'), // FCM tokens can vary in length
+    // Support both field names: fcmToken (new standard) and token (legacy)
+    fcmToken: z.string().min(1, 'FCM token is required').optional(),
+    token:    z.string().min(1, 'FCM token is required').optional(),
+    // Stable hardware/app identifier — does NOT change when FCM token refreshes
+    deviceId: z.string().min(1, 'Device ID is required'),
     // Normalize to uppercase so "android", "Android", "ANDROID" all work
     platform: z.string()
         .transform((v) => v.toUpperCase())
         .pipe(z.enum(['IOS', 'ANDROID', 'WEB'], {
             errorMap: () => ({ message: 'Platform must be IOS, ANDROID, or WEB' }),
         })),
+    deviceName: z.string().optional(), // e.g. "Samsung Galaxy S23"
+    appVersion: z.string().optional(), // e.g. "1.0.0"
     deviceInfo: z.object({
-        model: z.string().optional(),
-        osVersion: z.string().optional(),
+        model:      z.string().optional(),
+        osVersion:  z.string().optional(),
         appVersion: z.string().optional(),
     }).optional(),
+}).refine(
+    (data) => !!(data.fcmToken || data.token),
+    { message: 'Either fcmToken or token is required', path: ['fcmToken'] }
+);
+
+// Schema for deactivating a device on logout (soft-delete)
+export const unregisterDeviceSchema = z.object({
+    deviceId: z.string().min(1, 'Device ID is required'),
+    // Also support token-based unregister for backward compatibility with existing DELETE /api/devices
+    token:    z.string().optional(),
 });
+
 
 // Notification preferences schema
 export const notificationPreferencesSchema = z.object({
@@ -115,9 +133,9 @@ export type UpdateDistributorInput = z.infer<typeof updateDistributorSchema>;
 export type UploadPdfInput = z.infer<typeof uploadPdfSchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;
 export type RegisterDeviceInput = z.infer<typeof registerDeviceSchema>;
+export type UnregisterDeviceInput = z.infer<typeof unregisterDeviceSchema>;
 export type NotificationPreferencesInput = z.infer<typeof notificationPreferencesSchema>;
 export type CreateAlertInput = z.infer<typeof createAlertSchema>;
 export type UpdateAlertInput = z.infer<typeof updateAlertSchema>;
 export type CreatePdfCategoryInput = z.infer<typeof createPdfCategorySchema>;
 export type UpdatePdfCategoryInput = z.infer<typeof updatePdfCategorySchema>;
-

@@ -9,5 +9,6 @@ uploads
 *.tsbuildinfo
 service-account.json
 *.pem
-prisma/migrations/*
-!prisma/migrations/.gitkeep
+# prisma migrations are tracked in git (they are the schema audit trail)
+# Only ignore the lock file which is auto-generated
+prisma/migrations/migration_lock.toml
